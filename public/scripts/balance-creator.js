@@ -2133,10 +2133,22 @@ function SetTierEvents() {
         }
 
         Tiers.splice(indexOfTier, 1);
+
+        // Killers store their tiers as indexes into Tiers, so drop the removed tier and shift the ones after it.
+        const shiftTierIndexes = tierIndexes => tierIndexes
+            .filter(index => index != indexOfTier)
+            .map(index => index > indexOfTier ? index - 1 : index);
+
+        for (let i = 0; i < KillerBalance.length; i++) {
+            KillerBalance[i].BalanceTiers = shiftTierIndexes(KillerBalance[i].BalanceTiers);
+            KillerBalance[i].SurvivorBalanceTiers = shiftTierIndexes(KillerBalance[i].SurvivorBalanceTiers);
+        }
+
         alert(`Removed tier \"${selectedTier}\"`);
 
         UpdateDropdowns();
         LoadTierByName(tierSelectionDropdown.value);
+        LoadKillerOverrideUI(GetCurrentKillerIndex());
     });
 }
 
