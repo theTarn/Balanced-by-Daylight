@@ -8,142 +8,206 @@ Purpose:
 */
 
 function SetBalancingSelectButtonEvents() {
-    const openButton = document.getElementById("balancing-select-button");
-
     const balancingSelectContainer = document.getElementById("balancing-select-container");
-    
-    let balanceSearchInput = document.getElementById("balancing-select-search-input");
-    
+    const balanceSearchInput = document.getElementById("balancing-select-search-input");
+
     balanceSearchInput.addEventListener("input", function() {
-        let searchQuery = balanceSearchInput.value;
-
-        let optionsContainer = document.getElementById("balancing-select-options-container");
-        let balanceOptions = optionsContainer.children;
-
-        PopulateBalancingSelectMenuFromSearch(searchQuery.toLowerCase());
+        PopulateBalancingSelectMenuFromSearch(balanceSearchInput.value.toLowerCase());
     });
 
-    openButton.addEventListener("click", function() {
-        balancingSelectContainer.hidden = false;
+    document.getElementById("balancing-select-button").addEventListener("click", function() {
+        OpenBalancingSelectMenu();
+    });
 
-        let balancingSelectMenu = document.getElementById("balancing-select-menu");
-        delete balancingSelectMenu.dataset.proposedPresetID;
+    SetStaticDialogEvents("balancing-select-container");
 
-        let closeButton = document.getElementById("balancing-select-close-button");
-        closeButton.innerText = "Cancel";
+    for (const tabButton of balancingSelectContainer.querySelectorAll("[data-balancing-tab]")) {
+        tabButton.addEventListener("click", function() {
+            ShowBalancingSelectTab(tabButton.dataset.balancingTab);
+        });
+    }
 
-        let balanceSubtitleText = document.getElementById("balancing-select-subtitle");
-        const currentBalanceName = GetBalancePresetByID(currentBalancingIndex)["Name"];
+    document.getElementById("custom-balance-save-button").addEventListener("click", function() {
+        ApplyCustomBalancing();
+    });
+}
 
-        balanceSubtitleText.innerHTML = `Current Preset: <b><u>${currentBalanceName}</u></b><br>` +
-            `Select your desired balancing preset from the options below:`;
+/**
+ * Opens the tournament dialog on its "Choose" tab.
+ */
+function OpenBalancingSelectMenu() {
+    document.getElementById("balancing-select-container").hidden = false;
 
-        PopulateBalancingSelectMenu();
+    const customBalanceInput = document.getElementById("custom-balance-select");
+    const savedCustomBalancing = localStorage.getItem("currentBalancing");
+    customBalanceInput.value = customBalanceOverride ?
+        JSON.stringify(currentBalancing, null, 4) :
+        (savedCustomBalancing ? JSON.stringify(JSON.parse(savedCustomBalancing), null, 4) : "");
 
-        balanceSearchInput.value = "";
-        balanceSearchInput.focus();
-    })
+    document.getElementById("custom-error").hidden = true;
+    document.getElementById("custom-balance-save-button").innerText = customBalanceOverride ? "Save" : "Save & Use";
 
-    const closeButton = document.getElementById("balancing-select-close-button");
+    ShowBalancingSelectTab("choose");
+    PopulateBalancingSelectMenu();
 
-    closeButton.addEventListener("click", function() {
-        balancingSelectContainer.hidden = true;
+    const balanceSearchInput = document.getElementById("balancing-select-search-input");
+    balanceSearchInput.value = "";
+    balanceSearchInput.focus();
+}
 
-        RemoveAllBalancingSelectMenuChildren();
-        
-        let balancingSelectMenu = document.getElementById("balancing-select-menu");
-        let proposedPresetID = balancingSelectMenu.dataset.proposedPresetID;
+/**
+ * Shows the "choose" or "custom" tab of the tournament dialog.
+ * @param {String} tab
+ */
+function ShowBalancingSelectTab(tab) {
+    document.getElementById("balancing-choose-tab").hidden = tab != "choose";
+    document.getElementById("balancing-custom-tab").hidden = tab != "custom";
 
-        if (proposedPresetID == undefined) { return; }
+    for (const tabButton of document.querySelectorAll("[data-balancing-tab]")) {
+        tabButton.setAttribute("aria-selected", tabButton.dataset.balancingTab == tab);
+    }
+}
 
-        let settingsMenu = document.getElementById("settings-menu");
-        settingsMenu.dataset.balancingHasChanged = "true";
+/**
+ * Switches to a balancing preset (and away from a custom balancing).
+ * @param {Number} presetID
+ */
+function SelectBalancingPreset(presetID) {
+    document.getElementById("balancing-select-container").hidden = true;
 
-        currentBalancingIndex = proposedPresetID
-        localStorage.setItem("currentBalancingIndex", currentBalancingIndex);
+    currentBalancingIndex = presetID;
+    localStorage.setItem("currentBalancingIndex", currentBalancingIndex);
 
-        TryLoadBalanceProfileFromPresetID(currentBalancingIndex,
+    customBalanceOverride = false;
+    localStorage.setItem("customBalanceOverride", customBalanceOverride);
+
+    TryLoadBalanceProfileFromPresetID(currentBalancingIndex,
+        function() {
+            TrySetCurrentBalancing();
+        },
+        function() {
+            console.error("Could not set balancing!")
+        }
+    );
+
+    if (!ValidateCustomBalancing(GetBalancePresetByID(currentBalancingIndex)["Balancing"])) {
+        GenerateAlertModal(
+            "Error",
+            "This default balance profile is invalid, selecting the default balance profile. Please report this to the GitHub issues page or the Discord server.",
             function() {
-                TrySetCurrentBalancing();
-            },
-            function() {
-                console.error("Could not set balancing!")
+                currentBalancingIndex = 0;
+                localStorage.setItem("currentBalancingIndex", currentBalancingIndex);
+
+                alert("Balance profile reset to default. Close this alert to continue.");
+
+                // Refresh the page
+                location.reload();
             }
-        );
+        )
+    }
+    currentBalancing = GetBalancePresetByID(currentBalancingIndex)["Balancing"];
 
-        if (!ValidateCustomBalancing(GetBalancePresetByID(currentBalancingIndex)["Balancing"])) {
-            GenerateAlertModal(
-                "Error",
-                "This default balance profile is invalid, selecting the default balance profile. Please report this to the GitHub issues page or the Discord server.",
-                function() {
-                    currentBalancingIndex = 0;
-                    localStorage.setItem("currentBalancingIndex", currentBalancingIndex);
-                    
-                    alert("Balance profile reset to default. Close this alert to continue.");
-        
-                    // Refresh the page
-                    location.reload();
-                }
-            )
-        }
-        currentBalancing = GetBalancePresetByID(currentBalancingIndex)["Balancing"];
-    });
+    OnBalancingChanged();
+}
 
-    let customBalanceCheckbox = document.getElementById("custom-balancing-checkbox");
+/**
+ * Validates the JSON in the custom balancing tab and, if it is valid, checks against it from now on.
+ */
+function ApplyCustomBalancing() {
+    const customBalanceInput = document.getElementById("custom-balance-select");
+    const customError = document.getElementById("custom-error");
 
-    customBalanceCheckbox.addEventListener("change", function() {
-        customBalanceOverride = customBalanceCheckbox.checked;
-        localStorage.setItem("customBalanceOverride", customBalanceOverride);
+    let customBalanceObj = undefined;
+    try {
+        customBalanceObj = JSON.parse(customBalanceInput.value);
+    } catch (error) {
+        customError.hidden = false;
+        customError.innerHTML = "The JSON used is not valid JSON. You can validate your JSON <a href='https://jsonlint.com/' target='_blank'>here</a>.";
+        return;
+    }
 
-        let customBalancingContainer = document.getElementById("custom-balance-select");
-        let selectPresetButton = document.getElementById("balancing-select-button");
+    if (!ValidateCustomBalancing(customBalanceObj)) {
+        customError.hidden = false;
+        customError.innerHTML = "The JSON used is valid JSON, but is not in the correct format. Please refer to the balance creator to generate the correct format.";
+        return;
+    }
 
-        if (customBalanceOverride) {
-            // Show custom balancing
-            selectPresetButton.hidden = true;
-            
-            customBalancingContainer.hidden = false;
-        } else {
-            // Hide custom balancing
-            selectPresetButton.hidden = false;
+    const wasCustom = customBalanceOverride;
 
-            customBalancingContainer.hidden = true;
-            customBalancingContainer.innerHTML = "";
-        }
+    currentBalancing = customBalanceObj;
+    customBalanceOverride = true;
+    localStorage.setItem("customBalanceOverride", customBalanceOverride);
+    localStorage.setItem("currentBalancing", JSON.stringify(currentBalancing));
 
-        let settingsMenu = document.getElementById("settings-menu");
-        settingsMenu.dataset.balancingHasChanged = "true";
-        settingsMenu.dataset.setCustomBalanceOverride = customBalanceOverride;
-    });
+    document.getElementById("balancing-select-container").hidden = true;
+
+    OnBalancingChanged(wasCustom ? `Saved "${currentBalancing["Name"]}".` : `Saved. Checking against "${currentBalancing["Name"]}".`);
+}
+
+/**
+ * Updates everything that depends on the balancing after it changed.
+ * @param {String} savedMessage A notice to show (e.g. after saving a custom balancing), or undefined.
+ */
+function OnBalancingChanged(savedMessage = undefined) {
+    if (!AreKillerAddonsValid()) {
+        KillerAddons = [undefined, undefined];
+    }
+
+    UpdateBalanceSelectionUI();
+    UpdateKillerSelectionUI();
+    UpdateAntiFacecampUI();
+    CheckForBalancingErrors();
+
+    const killerNotice = GetKillerAvailabilityNotice();
+    if (savedMessage != undefined) {
+        ShowNotice(killerNotice ? `${savedMessage} ${killerNotice}` : savedMessage, killerNotice ? "error" : "success");
+    } else if (killerNotice) {
+        ShowNotice(killerNotice, "error");
+    }
+}
+
+/**
+ * Returns a notice when the selected killer is not in the balancing or is disabled in it, otherwise null.
+ * @returns {String}
+ */
+function GetKillerAvailabilityNotice() {
+    const currentName = Killers[selectedKiller].Name;
+    const currentKillerOverride = currentBalancing.KillerOverride[selectedKiller];
+
+    if (currentKillerOverride == undefined) {
+        return `Killer ${currentName} not found in current balancing! Please select a different killer or change the balancing. Validation won't work.`;
+    }
+
+    if (currentKillerOverride.IsDisabled) {
+        return `Killer ${currentName} is disabled in the current balancing! You may still select this killer, but they may be ineligible to play in official matches.`;
+    }
+
+    return null;
 }
 
 /**
  * Responsible for setting the event for the role swap button. As a result, should only ever be called once.
  */
 function LoadRoleSwapEvents() {
-    let roleSwapButton = document.getElementById("role-swap-button");
+    for (const roleButton of document.querySelectorAll(".rolestep [data-role]")) {
+        roleButton.addEventListener("click", function() {
+            let newRole = parseInt(roleButton.dataset.role);
+            if (newRole == selectedRole) { return; }
 
-    roleSwapButton.addEventListener("click", function() {
-        DebugLog("Commencing role swap!");
+            DebugLog("Commencing role swap!");
 
-        // Swap role
-        selectedRole = selectedRole == 0 ? 1 : 0;
+            selectedRole = newRole;
 
-        localStorage.setItem("selectedRole", selectedRole);
+            localStorage.setItem("selectedRole", selectedRole);
 
-        UpdateRoleSwapIcon();
-        UpdateRoleSelectionHeaderUI();
-        UpdatePerkUI();
-        CheckForBalancingErrors();
-
-        if(selectedRole == 0){
-            document.getElementById("import-button").style.display = "block"
-            document.getElementById("export-button").style.display = "block"
-        } else {
-            document.getElementById("import-button").style.display = "none"
-            document.getElementById("export-button").style.display = "none"
-        }
-    });
+            UpdateRoleSwapIcon();
+            UpdateRoleSelectionHeaderUI();
+            UpdatePerkUI();
+            CheckForBalancingErrors();
+            UpdateKillerSelectionUI();
+            ShowCheckerTab("loadout");
+        });
+    }
 }
 
 /**
@@ -197,11 +261,13 @@ function LoadImportEvents() {
 
     importButton.addEventListener("click", () => {
         document.getElementById("modal-import-container").hidden = false
-
-        document.getElementById("modal-import-cancel-button").addEventListener("click", function() {
-            document.getElementById("modal-import-container").hidden = true
-        })
     })
+
+    document.getElementById("modal-import-cancel-button").addEventListener("click", function() {
+        document.getElementById("modal-import-container").hidden = true
+    })
+
+    SetStaticDialogEvents("modal-import-container")
 
     dropZone.addEventListener("click", () => {
         document.getElementById("import-image").click()
@@ -445,39 +511,19 @@ function SetKillerCharacterSelectEvents() {
             DebugLog(newIndex);
             DebugLog(currentName);
 
-            // If killer with currentName is not in the list, return
-            let currentOverrides = currentBalancing.KillerOverride;
-            let killerFound = false;
-            for (var i = 0; i < currentOverrides.length; i++) {
-                let currentOverride = currentOverrides[i];
-
-                if (currentOverride.Name == currentName) {
-                    killerFound = true;
-                    break;
-                }
-            }
-
-            if (!killerFound) {
-                GenerateAlertModal("Killer Not Found", `Killer <b>${currentName}</b> not found in current balancing! Please select a different killer or change the balancing.`);
-                return;
-            }
+            document.getElementById("balance-character-select-container").hidden = true;
 
             selectedKiller = newIndex;
             localStorage.setItem("selectedKiller", selectedKiller);
-
-            let currentKillerOverride = currentBalancing.KillerOverride[selectedKiller];
 
             if (currentKlr != selectedKiller) {
                 if (selectedRole != 0) {
                     ClearKillerAddons();
                 }
 
-                if (currentKillerOverride.IsDisabled != undefined) {
-                    let isDisabled = currentKillerOverride.IsDisabled;
-
-                    if (isDisabled) {
-                        GenerateAlertModal("Killer Disabled", `Killer <b>${currentName}</b> is disabled in the current balancing! You may still select this killer, but they may be ineligible to play in official matches.`);
-                    }
+                const killerNotice = GetKillerAvailabilityNotice();
+                if (killerNotice) {
+                    ShowNotice(killerNotice, "error");
                 }
             }
 
@@ -486,98 +532,67 @@ function SetKillerCharacterSelectEvents() {
                 KillerAddons = [undefined, undefined];
             }
 
-            CheckIndividualKillerNotes(); // If autoshow notes setting is enabled, show notes for the selected killer.
+            CheckIndividualKillerNotes(); // If the setting is enabled, marks new notes for the selected killer.
 
             CheckForBalancingErrors();
             UpdateKillerSelectionUI();
             UpdateAntiFacecampUI();
-            
-
-            ScrollToSelectedKiller();
+            ShowCheckerTab("loadout");
         });
     }
+
+    document.getElementById("killer-select-button").addEventListener("click", function() {
+        document.getElementById("balance-character-select-container").hidden = false;
+
+        const killerSearchInput = document.getElementById("killer-search-input");
+        killerSearchInput.value = "";
+        FilterKillerPortraits("");
+        killerSearchInput.focus();
+
+        ScrollToSelectedKiller();
+    });
+
+    SetStaticDialogEvents("balance-character-select-container");
+
+    document.getElementById("killer-search-input").addEventListener("input", function(event) {
+        FilterKillerPortraits(event.target.value);
+    });
+
+    const hideDisabledCheckbox = document.getElementById("hide-disabled-killers");
+    hideDisabledCheckbox.addEventListener("change", function() {
+        SetHideDisabledKillers(hideDisabledCheckbox.checked);
+    });
 }
 
 /**
  * Responsible for setting the events for the settings menu, including the checkboxes. As a result, should only ever be called once.
  */
 function LoadSettingsEvents() {
-    // Load settings button
-    let settingsButton = document.getElementById("settings-button");
-    settingsButton.addEventListener("click", function() {
-        var settingsContainer = document.getElementById("settings-container");
-        settingsContainer.hidden = !settingsContainer.hidden;
-        
-        let settingsBlur = document.getElementById("settings-blur");
-        settingsBlur.classList.remove("background-blur");
-        settingsBlur.classList.remove("background-outro-blur");
-        settingsBlur.classList.add("background-blur");
+    const settingsContainer = document.getElementById("settings-container");
 
-        let settingsMenu = document.getElementById("settings-menu");
-        settingsMenu.classList.remove("intro-blur-animation-class-1p0s");
-        settingsMenu.classList.remove("outro-blur-animation-class-0p5s");
-        settingsMenu.classList.add("intro-blur-animation-class-1p0s");
+    document.getElementById("settings-button").addEventListener("click", function() {
+        settingsContainer.hidden = false;
+        ResetClearSettingsConfirmation();
     });
 
-    let settingsCancelButton = document.getElementById("settings-cancel-button");
-    settingsCancelButton.addEventListener("click", function() {
-
-        if (customBalanceOverride) {
-            currentBalancing = GetCustomBalancing();
-
-            // Save custom balancing to local storage
-            localStorage.setItem("currentBalancing", JSON.stringify(currentBalancing));
-
-            //currentBalancingIndex = -1;
-        }
-
-        var settingsMenu = document.getElementById("settings-menu");
-        settingsMenu.classList.remove("outro-blur-animation-class-0p5s");
-        settingsMenu.classList.add("outro-blur-animation-class-0p5s");
-
-        var settingsBlur = document.getElementById("settings-blur");
-        settingsBlur.classList.remove("background-outro-blur");
-        settingsBlur.classList.add("background-outro-blur");
-
-        // Create a 1 second timer
-        setTimeout(function() {
-            var settingsContainer = document.getElementById("settings-container");
-            settingsContainer.hidden = !settingsContainer.hidden;
-        }, 500);
-
-        if (settingsMenu.dataset.balancingHasChanged === "true") {
-            UpdateBalanceSelectionUI();
-            UpdateAntiFacecampUI();
-            delete settingsMenu.dataset.balancingHasChanged;
-        }
-
-        if (settingsMenu.dataset.setCustomBalanceOverride === "false") {
-            TryLoadBalanceProfileFromPresetID(currentBalancingIndex,
-                function() {
-                    TrySetCurrentBalancing();
-                    UpdateBalanceSelectionUI();
-                    UpdateAntiFacecampUI();
-                },
-                function() {
-                    console.error("Could not set balancing!")
-                }
-            );
-        }
-        delete settingsMenu.dataset.setCustomBalanceOverride;
-
-        CheckForBalancingErrors();
-    });
+    SetStaticDialogEvents("settings-container");
 
     const onlyNonBannedCheckbox = document.getElementById("only-non-banned");
     onlyNonBannedCheckbox.addEventListener("change", function(){
-        onlyShowNonBanned = onlyNonBannedCheckbox.checked;
-        localStorage.setItem("onlyShowNonBanned", onlyShowNonBanned);
+        SetOnlyShowNonBanned(onlyNonBannedCheckbox.checked);
     })
+
+    const hideDisabledCheckbox = document.getElementById("hide-disabled-killers-setting");
+    hideDisabledCheckbox.addEventListener("change", function() {
+        SetHideDisabledKillers(hideDisabledCheckbox.checked);
+    });
 
     const autoShowNotesCheckbox = document.getElementById("auto-show-notes");
     autoShowNotesCheckbox.addEventListener("change", function(){
         showNotesOnLaunch = autoShowNotesCheckbox.checked;
         localStorage.setItem("showNotesOnLaunch", showNotesOnLaunch);
+
+        UpdateNotesTabMark();
     })
 
     const saveLoadoutsKillerCheckbox = document.getElementById("save-loadouts-killer");
@@ -595,13 +610,48 @@ function LoadSettingsEvents() {
         localStorage.setItem("importKillerChoice", importKillerChoice);        
     })
 
-    const clearStorageButton = document.getElementById("settings-clear-storage-button");
-    clearStorageButton.addEventListener("click", function() {
-        if (confirm("Are you sure you want to clear your local storage? This will delete all of your settings including saved custom balancing.")) {
+    document.getElementById("settings-clear-confirm").addEventListener("click", function(event) {
+        if (event.target.closest("#settings-clear-storage-button")) {
+            event.currentTarget.innerHTML = "Are you sure you want to clear your local storage? This will delete all of your settings including saved custom balancing. " +
+                "<button type='button' class='btn danger' data-clear-yes>Clear Settings</button><button type='button' class='btn' data-clear-no>Cancel</button>";
+        }
+        if (event.target.closest("[data-clear-no]")) {
+            ResetClearSettingsConfirmation();
+        }
+        if (event.target.closest("[data-clear-yes]")) {
             localStorage.clear();
             location.reload();
         }
     });
+}
+
+function ResetClearSettingsConfirmation() {
+    document.getElementById("settings-clear-confirm").innerHTML = "<button type='button' id='settings-clear-storage-button' class='btn danger'>Clear Settings</button>";
+}
+
+/**
+ * Sets the "only show allowed" option, used by the search (also available as a checkbox in the search dialog).
+ * @param {Boolean} enabled
+ */
+function SetOnlyShowNonBanned(enabled) {
+    onlyShowNonBanned = enabled;
+    localStorage.setItem("onlyShowNonBanned", onlyShowNonBanned);
+
+    document.getElementById("only-non-banned").checked = enabled;
+    document.getElementById("only-non-banned-search").checked = enabled;
+}
+
+/**
+ * Sets the "hide disabled killers" option of the killer selection.
+ * @param {Boolean} enabled
+ */
+function SetHideDisabledKillers(enabled) {
+    hideDisabledKillers = enabled;
+    localStorage.setItem("hideDisabledKillers", hideDisabledKillers);
+
+    document.getElementById("hide-disabled-killers").checked = enabled;
+    document.getElementById("hide-disabled-killers-setting").checked = enabled;
+    document.getElementById("character-select-grid").classList.toggle("hide-disabled", enabled);
 }
 
 /**
@@ -871,37 +921,59 @@ function LoadKillerPerkSelectionEvents() {
 function LoadPerkSearchEvents() {
     const perkSearchContainer = document.getElementById("perk-search-container");
 
-    // Code to exit search menu
+    // Code to exit search menu: picking a result, the close button or a click outside the dialog
     perkSearchContainer.addEventListener("click", function(event) {
-        if(event.target.tagName === "IMG" || event.target.classList.contains("background-blur"))
+        if (event.target === perkSearchContainer ||
+            event.target.closest("[data-close]") ||
+            event.target.closest(".perk-slot-result, .item-slot-result")) {
             perkSearchContainer.hidden = true;
+        }
+    });
+    document.addEventListener("keydown", function(event) {
+        if (event.key === "Escape") { perkSearchContainer.hidden = true; }
     });
 
     const perkSearchBar = document.getElementById("perk-search-bar");
 
     // Code to start search
     perkSearchBar.addEventListener("input", function() {
-        // Get search type from dataset
-        var searchType = perkSearchContainer.dataset.searchType;
-
-        switch (searchType) {
-            case "perk":
-                ForcePerkSearch(perkSearchBar, perkSearchBar.value);
-                break;
-            case "offering":
-                ForceOfferingSearch(perkSearchBar, perkSearchBar.value);
-                break;
-            case "item":
-                ForceItemSearch(perkSearchBar, perkSearchBar.value);
-                break;
-            case "addon":
-                ForceAddonSearch(perkSearchBar, perkSearchBar.value);
-                break;
-            case "killer-addon":
-                ForceKillerAddonSearch(perkSearchBar, perkSearchBar.value);
-                break;
-        }
+        RunPerkSearch();
     });
+
+    const onlyNonBannedCheckbox = document.getElementById("only-non-banned-search");
+    onlyNonBannedCheckbox.addEventListener("change", function() {
+        SetOnlyShowNonBanned(onlyNonBannedCheckbox.checked);
+        RunPerkSearch();
+    });
+}
+
+/**
+ * Runs the search for the type of slot the search dialog was opened for.
+ */
+function RunPerkSearch() {
+    const perkSearchContainer = document.getElementById("perk-search-container");
+    const perkSearchBar = document.getElementById("perk-search-bar");
+
+    // Get search type from dataset
+    var searchType = perkSearchContainer.dataset.searchType;
+
+    switch (searchType) {
+        case "perk":
+            ForcePerkSearch(perkSearchBar, perkSearchBar.value);
+            break;
+        case "offering":
+            ForceOfferingSearch(perkSearchBar, perkSearchBar.value);
+            break;
+        case "item":
+            ForceItemSearch(perkSearchBar, perkSearchBar.value);
+            break;
+        case "addon":
+            ForceAddonSearch(perkSearchBar, perkSearchBar.value);
+            break;
+        case "killer-addon":
+            ForceKillerAddonSearch(perkSearchBar, perkSearchBar.value);
+            break;
+    }
 }
 
 /**
@@ -915,62 +987,8 @@ function ApplyBalancingOptionEvents(optionNode, presetIndex) {
     if (optionNode == undefined) { return null; }
 
     optionNode.addEventListener("click", function() {
-        /*
-        1. Set balancing select menu dataset's proposed new ID to the preset ID.
-        2. Go through all existing balancing options and remove the "proposed-league-selection" class.
-        3. Add the "proposed-league-selection" class to this option.
-        */
-        let balancingSelectMenu = document.getElementById("balancing-select-menu");
-        let closeButton = document.getElementById("balancing-select-close-button");
-
-        if (optionNode.dataset.balancePresetID == balancingSelectMenu.dataset.proposedPresetID) {
-            delete balancingSelectMenu.dataset.proposedPresetID;
-            optionNode.classList.remove("proposed-league-selection");
-            
-            closeButton.innerText = "Cancel";
-            return;
-        }
-
-        const optionsContainer = document.getElementById("balancing-select-options-container");
-        for (let child of optionsContainer.children) {
-            child.classList.remove("proposed-league-selection");
-        }
-
-        balancingSelectMenu.dataset.proposedPresetID = optionNode.dataset.balancePresetID;
-
-        optionNode.classList.add("proposed-league-selection");
-
-        closeButton.innerText = "Confirm Changes";
+        SelectBalancingPreset(optionNode.dataset.balancePresetID);
     });
 
     return optionNode;
-}
-
-function SetAntiFacecampBadgeEvents() {
-    let timer = undefined;
-
-    const anticampBadge = document.getElementById("anticamp-badge");
-    const anticampTooltip = document.getElementById("anticamp-tooltip");
-
-    
-    let badgePos = getOffset(anticampBadge);
-    
-    anticampTooltip.style.position = "absolute";
-
-    anticampBadge.addEventListener("mouseenter", function(event) {
-        anticampTooltip.innerText = anticampBadge.ariaLabel;
-
-        anticampTooltip.style.left = event.clientX;
-        anticampTooltip.style.top = event.clientY;
-
-        anticampTooltip.hidden = false;
-    });
-
-    anticampBadge.addEventListener("mouseleave", function(event) {
-        anticampTooltip.innerText = "";
-        
-        anticampTooltip.hidden = true;
-
-        clearTimeout(timer);
-    });
 }

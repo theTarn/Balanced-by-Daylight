@@ -11,6 +11,10 @@ Purpose:
 function UpdateRoleSelectionHeaderUI() {
     const header = document.getElementById("selected-role-header");
     header.innerText = selectedRole == 0 ? "Survivor Builds" : "Killer Build";
+
+    const killerName = Killers[selectedKiller].Name;
+    document.getElementById("selected-role-subtitle").innerText = selectedRole == 0 ? `vs ${killerName}` : killerName;
+    document.getElementById("killer-build-name").innerText = killerName.replace(/^The /, "");
 }
 
 /**
@@ -35,23 +39,13 @@ function UpdatePerkUI() {
  */
 let dragTargetElement, dragSourceElement = {}
 function UpdateSurvivorPerkUI() {
-    // Get the builds container
-    var buildsContainer = document.getElementById("survivor-builds-container");
-
-    // Get all children
-    var children = buildsContainer.children;
-
-    //-20 for the 10px padding on left & right
-    const maxWidth = children[0].offsetWidth - 20;
+    // Get the build components (one per survivor)
+    var children = document.querySelectorAll("#survivor-builds-container .survivor-build-component");
 
     // Loop through all children
     validChildI = 0;
     for (var i = 0; i < children.length; i++) {
         let currentChild = children[i];
-        // Is this a valid build component?
-        if (!currentChild.classList.contains("survivor-build-component")) { continue; }
-        
-        currentChild.style.maxWidth = maxWidth + "px";
         currentChild.innerHTML = "";
 
         // Get current survivor perks
@@ -137,6 +131,7 @@ function UpdateSurvivorPerkUI() {
 
             perkElement.dataset.survivorID = validChildI;
             perkElement.dataset.perkID = j;
+            perkElement.dataset.name = currentPerk ? currentPerk["name"] : "";
 
             let perkImg = document.createElement("img");
             perkImg.src = ImgSrc;
@@ -228,6 +223,7 @@ function UpdateSurvivorPerkUI() {
         });
         
         offeringElement.dataset.survivorID = validChildI;
+        offeringElement.dataset.name = currentSurvivorOffering ? currentSurvivorOffering["name"] : "";
 
         let offeringImg = document.createElement("img");
         offeringImg.src = OffSrc;
@@ -332,6 +328,7 @@ function UpdateSurvivorPerkUI() {
         });
 
         itemElement.dataset.survivorID = validChildI;
+        itemElement.dataset.name = currentSurvivorItem ? currentSurvivorItem["Name"] : "";
 
         let itemImg = document.createElement("img");
         itemImg.src = itemSrc;
@@ -373,6 +370,9 @@ function UpdateSurvivorPerkUI() {
         addonElement1.dataset.addonSlot = 0;
         addonElement2.dataset.addonSlot = 1;
 
+        addonElement1.dataset.name = currentSurvivorAddons[0] ? currentSurvivorAddons[0]["Name"] : "";
+        addonElement2.dataset.name = currentSurvivorAddons[1] ? currentSurvivorAddons[1]["Name"] : "";
+
         let addonImg1 = document.createElement("img");
         addonImg1.src = addonSrc1;
         addonImg1.draggable = false;
@@ -398,12 +398,6 @@ function UpdateSurvivorPerkUI() {
  */
 function UpdateKillerPerkUI() {
     const buildsComponent = document.getElementById("killer-build-component");
-
-    //-20 for the 10px padding on left & right
-    const maxWidth = buildsComponent.offsetWidth - 20;
-    //const maxWidth = 710;
-
-    buildsComponent.style.maxWidth = maxWidth + "px";
     buildsComponent.innerHTML = "";
 
     // Get current killer perks
@@ -485,6 +479,7 @@ function UpdateKillerPerkUI() {
         });
 
         perkElement.dataset.perkID = i;
+        perkElement.dataset.name = currentPerk ? currentPerk["name"] : "";
 
         let perkImg = document.createElement("img");
         perkImg.src = ImgSrc;
@@ -503,6 +498,7 @@ function UpdateKillerPerkUI() {
     offeringElement.classList.add("loadout-slot");
 
     offeringElement.id = "killer-offering-slot";
+    offeringElement.dataset.name = currentKillerOffering ? currentKillerOffering["name"] : "";
 
     let OffSrc = "";
     try {
@@ -516,6 +512,19 @@ function UpdateKillerPerkUI() {
 
     offeringElement.appendChild(offeringImg);
     buildsComponent.appendChild(offeringElement);
+
+    // The killer's power (display only)
+    let powerElement = document.createElement("div");
+    powerElement.classList.add("power-slot");
+    powerElement.classList.add("loadout-slot");
+    powerElement.title = "Power";
+
+    let powerImg = document.createElement("img");
+    powerImg.src = Killers[selectedKiller].PowerIcon;
+    powerImg.draggable = false;
+
+    powerElement.appendChild(powerImg);
+    buildsComponent.appendChild(powerElement);
 
     // Get current killer addons
     let currentKillerAddons = KillerAddons;
@@ -557,6 +566,9 @@ function UpdateKillerPerkUI() {
     addonElement1.dataset.addonSlot = 0;
     addonElement2.dataset.addonSlot = 1;
 
+    addonElement1.dataset.name = currentKillerAddons[0] ? currentKillerAddons[0]["Name"] : "";
+    addonElement2.dataset.name = currentKillerAddons[1] ? currentKillerAddons[1]["Name"] : "";
+
     let addonImg1 = document.createElement("img");
     addonImg1.src = addonSrc1;
     addonImg1.draggable = false;
@@ -575,12 +587,28 @@ function UpdateKillerPerkUI() {
 }
 
 /**
- * Updates the selected title for which killer is selected and then adds the "character-selected" class to the selected killer portrait (to make it glow).
+ * Updates the killer picker in the top bar and marks the selected killer in the killer selection.
  */
 function UpdateKillerSelectionUI() {
-    var selectedKillerTitle = document.getElementById("selected-killer-title");
-    selectedKillerTitle.innerHTML = `Selected Killer: <span style="font-weight:700;">${Killers[selectedKiller].Name}</span>`;
-    
+    const killer = Killers[selectedKiller];
+    const currentKillerOverride = currentBalancing == null ? undefined : currentBalancing.KillerOverride[selectedKiller];
+
+    document.getElementById("selected-killer-title").innerText = killer.Name;
+    document.getElementById("selected-killer-portrait").src = killer.Portrait;
+
+    let label = "Killer";
+    if (currentBalancing != null) {
+        if (currentKillerOverride == undefined) {
+            label += " · not in balancing";
+        } else if (currentKillerOverride.IsDisabled) {
+            label += " · disabled";
+        } else {
+            const tierNames = GetAppliedTierNames(currentKillerOverride, selectedRole);
+            if (tierNames.length > 0) { label += " · " + tierNames.join(", "); }
+        }
+    }
+    document.getElementById("selected-killer-label").innerText = label;
+
     // Remove all character-selected classes
     if(document.querySelector(`.character-selected`)) {
         document.querySelector(`.character-selected`).classList.remove("character-selected")
@@ -589,13 +617,27 @@ function UpdateKillerSelectionUI() {
     // Add character-selected class to selected killer
     let selectedKillerElement = document.querySelector(`[data-killerid="${selectedKiller}"]`);
     selectedKillerElement.classList.add("character-selected");
-    selectedKillerElement.classList.remove("character-disabled-flag")
 
+    UpdateRoleSelectionHeaderUI();
     SetDisabledKillers();
 }
 
 /**
- * Applies a small brightness reduction to disabled killers.
+ * Returns the names of the tiers (other than General) applied to a killer for the given role.
+ * @param {Object} killerOverride
+ * @param {Number} role 0 = Survivor, 1 = Killer
+ * @returns {Array}
+ */
+function GetAppliedTierNames(killerOverride, role) {
+    const tierIndexes = role == 0 ? killerOverride.SurvivorBalanceTiers : killerOverride.BalanceTiers;
+
+    return [...new Set(tierIndexes)]
+        .map(index => currentBalancing.Tiers[index] ? currentBalancing.Tiers[index].Name.trim() : undefined)
+        .filter(name => name != undefined && name.toLowerCase() != "general");
+}
+
+/**
+ * Updates the killer selection: tiers under each killer, and marks killers that are disabled or not in the balancing.
  */
 function SetDisabledKillers() {
     const selectGrid = document.getElementById("character-select-grid");
@@ -605,73 +647,99 @@ function SetDisabledKillers() {
 
     const characterButtons = selectGrid.querySelectorAll(':scope > .character-select-button');
 
-    characterButtons.forEach((button, index) => {
+    characterButtons.forEach(button => {
         const killerID = button.dataset.killerid
-
         const killer = currentBalancing.KillerOverride[killerID];
 
-        if (killer != null) {
-            // Sorry, can't break or continue, and return makes this useless.
+        const unavailable = killer == undefined || killer.IsDisabled;
+        button.classList.toggle("off", unavailable);
+        button.querySelector(".ban-at").hidden = !unavailable;
 
-            if (killer.IsDisabled) {
-                button.classList.add("character-disabled-flag");
-            } else {
-                button.classList.remove("character-disabled-flag");
-            }
-
-            if (button.classList.contains("character-selected")) {
-                button.classList.remove("character-disabled-flag");
-            }
+        let tierText = "";
+        if (killer == undefined) {
+            tierText = "Not in this balancing";
+        } else if (!killer.IsDisabled) {
+            tierText = GetAppliedTierNames(killer, selectedRole).join(", ");
         }
+        button.querySelector(".tier").innerText = tierText;
     })
 }
 
 /**
- * Updates the selected balance title and also calls CheckGlobalBalanceNotes() and SetBalanceTypeDisclaimer().
+ * Shows only the killers whose name contains the query in the killer selection.
+ * @param {String} query
+ */
+function FilterKillerPortraits(query) {
+    const lowerQuery = query.trim().toLowerCase();
+
+    document.querySelectorAll("#character-select-grid > .character-select-button").forEach(button => {
+        const killer = Killers[button.dataset.killerid];
+        const searchable = [killer.Name, ...(killer.Aliases || [])].join(" ").toLowerCase();
+
+        button.hidden = lowerQuery != "" && !searchable.includes(lowerQuery);
+    });
+}
+
+/**
+ * Updates the tournament picker and everything that depends on the balancing.
  */
 function UpdateBalanceSelectionUI() {
     const selectedBalanceTitle = document.getElementById("selected-balance-title");
-    selectedBalanceTitle.innerHTML = `Selected Balance: <span style="font-weight:700;">${currentBalancing["Name"]}</span>`;
+    selectedBalanceTitle.innerText = currentBalancing["Name"];
 
     SetDisabledKillers();
     CheckGlobalBalanceNotes();
 }
 
+/**
+ * Updates the rules that apply to the whole match (anti-facecamp, perk repetition, ...) and the killer's maps.
+ */
 function UpdateAntiFacecampUI() {
-    const anticampBadge = document.getElementById("anticamp-badge");
-
-    if (currentBalancing == null) {
-        anticampBadge.hidden = true;
-        return;
-    }
-    
-    anticampBadge.hidden = false;
-
-    const antiFacecampAllowed = currentBalancing.KillerOverride[selectedKiller]["AntiFacecampPermitted"];
-
-    anticampBadge.ariaLabel = antiFacecampAllowed ? "Anti-Facecamp Permitted" : "Anti-Facecamp Prohibited";
-
-    anticampBadge.src = antiFacecampAllowed ? "iconography/Anticamp-Small-Colorized-Permitted.webp" : "iconography/Anticamp-Small-Colorized-Prohibited.webp";
+    UpdateMatchRulesUI();
 }
 
 /**
- * Scrolls the killer selection column to make sure the currently selected killer's portrait is in the viewport.
+ * Scrolls the killer selection to make sure the currently selected killer's portrait is in view.
  */
 function ScrollToSelectedKiller(){
-    document.getElementById("character-select-grid").scrollTo({
-        top : document.querySelector(`[data-killerid="${selectedKiller}"]`).getBoundingClientRect().top + document.getElementById("character-select-grid").scrollTop - 102,
-        behavior: "smooth"
-    })
+    const selectedElement = document.querySelector(`#character-select-grid [data-killerid="${selectedKiller}"]`);
+    if (selectedElement == null) { return; }
+
+    selectedElement.scrollIntoView({ block: "nearest" });
 }
 
 /**
- * Updates the icon for the role swap button depending on which role is currently selected.
+ * Updates the role switch. Importing an image and exporting a loadout are only available for survivors.
  */
 function UpdateRoleSwapIcon() {
-    let elementToChange = document.getElementById("role-swap-icon");
-    let elementSrc = selectedRole == 0 ? "iconography/Killer.webp" : "iconography/Survivor.webp";
+    for (const roleButton of document.querySelectorAll(".rolestep [data-role]")) {
+        roleButton.setAttribute("aria-pressed", parseInt(roleButton.dataset.role) == selectedRole);
+    }
 
-    elementToChange.src = elementSrc;
+    document.getElementById("import-button").hidden = selectedRole != 0;
+    document.getElementById("export-button").hidden = selectedRole != 0;
+}
+
+/**
+ * Sets the title of the search dialog and syncs its "only show allowed" checkbox.
+ * @param {String} title
+ */
+function SetSearchTitle(title) {
+    document.getElementById("perk-search-title").innerText = title;
+    document.getElementById("only-non-banned-search").checked = onlyShowNonBanned;
+}
+
+/**
+ * Adds the name under a search result's icon.
+ * @param {Element} resultElement
+ * @param {String} name
+ */
+function AddSearchResultName(resultElement, name) {
+    let nameElement = document.createElement("span");
+    nameElement.classList.add("nm");
+    nameElement.innerText = name;
+
+    resultElement.appendChild(nameElement);
 }
 
 /**
@@ -682,6 +750,7 @@ function ForcePerkSearch(perkSearchBar) {
     var searchResults = SearchForPerks(perkSearchBar.value, selectedRole == 0);
 
     perkSearchBar.placeholder = "Search Perks...";
+    SetSearchTitle("Choose a perk");
 
     var perkSearchResultsContainer = document.getElementById("perk-search-results-module");
     perkSearchResultsContainer.classList.remove("item-gap-format");
@@ -696,6 +765,7 @@ function ForcePerkSearch(perkSearchBar) {
     blankImg.src = "public/Perks/blank.webp";
 
     blankPerk.appendChild(blankImg);
+    AddSearchResultName(blankPerk, "Empty");
     perkSearchResultsContainer.appendChild(blankPerk);
 
     blankPerk.addEventListener("click", function() {
@@ -796,6 +866,11 @@ function ForcePerkSearch(perkSearchBar) {
             perkElement.classList.add("perk-slot-result-equipped");
         }
 
+        const breaksRule = isBanned ? null : GetPerkPickRuleBreak(currentPerk);
+        if (breaksRule != null) {
+            perkElement.classList.add("perk-slot-result-conflict");
+        }
+
         perkElement.dataset.perkID = currentPerk["id"];
 
 
@@ -804,6 +879,7 @@ function ForcePerkSearch(perkSearchBar) {
         perkImg.src = currentPerk["icon"];
 
         perkElement.appendChild(perkImg);
+        AddSearchResultName(perkElement, currentPerk["name"]);
         perkSearchResultsContainer.appendChild(perkElement);
 
         var perkSearchContainer = document.getElementById("perk-search-container");
@@ -844,6 +920,8 @@ function ForcePerkSearch(perkSearchBar) {
                 } else {
                     perkTooltip.innerHTML += " <span style='color: #ffbd80'>(Equipped + Banned)</span>";
                 }
+            } else if (breaksRule != null) {
+                perkTooltip.innerHTML += ` <span style='color: #ff8080'>(${breaksRule})</span>`;
             } else {
                 if (isEquipped) {
                     perkTooltip.innerHTML += " <span style='color: #80ff80'>(Equipped)</span>";
@@ -854,6 +932,31 @@ function ForcePerkSearch(perkSearchBar) {
 }
 
 /**
+ * Returns the rule that picking a perk for the slot being searched would break, or null.
+ * @param {Object} perk
+ * @returns {String}
+ */
+function GetPerkPickRuleBreak(perk) {
+    const perkSearchContainer = document.getElementById("perk-search-container");
+    const targetSurvivor = parseInt(perkSearchContainer.dataset.targetSurvivor);
+    const targetPerk = parseInt(perkSearchContainer.dataset.targetPerk);
+
+    const targetBuild = selectedRole == 0 ? SurvivorPerks[targetSurvivor] : KillerPerks;
+    if (targetBuild == undefined) { return null; }
+
+    const inOtherSlot = targetBuild.some((buildPerk, slot) => slot != targetPerk && buildPerk && buildPerk.id == perk.id);
+    if (inOtherSlot) { return "Duplicate Perk"; }
+
+    if (selectedRole == 0) {
+        // The perk would be in this build plus every other build that already has it.
+        const otherBuilds = SurvivorPerks.filter((build, survivor) => survivor != targetSurvivor && BuildHasPerk(perk.id, build)).length;
+        if (otherBuilds + 1 > currentBalancing.MaxPerkRepetition) { return "Perk Repetition"; }
+    }
+
+    return null;
+}
+
+/**
  * Searches for offerings based on a search query.
  * @param {HTMLElement} perkSearchBar The perk search bar element.
  */
@@ -861,6 +964,7 @@ function ForceOfferingSearch(perkSearchBar) {
     let isSurvivor = selectedRole == 0;
 
     perkSearchBar.placeholder = "Search Offerings...";
+    SetSearchTitle("Choose an offering");
 
     let searchResults = SearchForOfferings(perkSearchBar.value, isSurvivor);
 
@@ -878,6 +982,7 @@ function ForceOfferingSearch(perkSearchBar) {
     blankImg.src = "public/Offerings/blank.webp";
 
     blankOffering.appendChild(blankImg);
+    AddSearchResultName(blankOffering, "Empty");
     offeringSearchResultsContainer.appendChild(blankOffering);
 
     let offeringSearchContainer = document.getElementById("perk-search-container");
@@ -938,6 +1043,7 @@ function ForceOfferingSearch(perkSearchBar) {
         offeringImg.src = currentOffering["icon"];
 
         offeringElement.appendChild(offeringImg);
+        AddSearchResultName(offeringElement, currentOffering["name"]);
         offeringSearchResultsContainer.appendChild(offeringElement);
 
         offeringElement.addEventListener("click", function() {
@@ -979,6 +1085,7 @@ function ForceOfferingSearch(perkSearchBar) {
  */
 function ForceItemSearch(perkSearchBar) {
     perkSearchBar.placeholder = "Search Items...";
+    SetSearchTitle("Choose an item");
 
     let searchResults = SearchForItems(perkSearchBar.value);
 
@@ -996,6 +1103,7 @@ function ForceItemSearch(perkSearchBar) {
     blankImg.src = "public/Items/blank.webp";
 
     blankItem.appendChild(blankImg);
+    AddSearchResultName(blankItem, "Empty");
     itemSearchResultsContainer.appendChild(blankItem);
 
     let itemSearchContainer = document.getElementById("perk-search-container");
@@ -1050,6 +1158,7 @@ function ForceItemSearch(perkSearchBar) {
         itemImg.src = currentItem["icon"];
 
         itemElement.appendChild(itemImg);
+        AddSearchResultName(itemElement, currentItem["Name"]);
         itemSearchResultsContainer.appendChild(itemElement);
 
         itemElement.addEventListener("click", function() {
@@ -1099,6 +1208,7 @@ function ForceItemSearch(perkSearchBar) {
  */
 function ForceAddonSearch(perkSearchBar) {
     perkSearchBar.placeholder = "Search Addons...";
+    SetSearchTitle("Choose an add-on");
 
     const perkSearchContainer = document.getElementById("perk-search-container");
     
@@ -1127,6 +1237,7 @@ function ForceAddonSearch(perkSearchBar) {
     blankImg.src = "public/Addons/blank.webp";
 
     blankAddon.appendChild(blankImg);
+    AddSearchResultName(blankAddon, "Empty");
     addonSearchResultsContainer.appendChild(blankAddon);
 
     blankAddon.addEventListener("click", function() {
@@ -1177,6 +1288,7 @@ function ForceAddonSearch(perkSearchBar) {
         addonImg.src = currentAddon["icon"];
 
         addonElement.appendChild(addonImg);
+        AddSearchResultName(addonElement, currentAddon["Name"]);
         addonSearchResultsContainer.appendChild(addonElement);
 
         addonElement.addEventListener("click", function() {
@@ -1213,6 +1325,7 @@ function ForceAddonSearch(perkSearchBar) {
  */
 function ForceKillerAddonSearch(perkSearchBar) {
     perkSearchBar.placeholder = "Search Addons...";
+    SetSearchTitle("Choose an add-on");
 
     const perkSearchContainer = document.getElementById("perk-search-container");
 
@@ -1242,6 +1355,7 @@ function ForceKillerAddonSearch(perkSearchBar) {
     blankImg.src = "public/Addons/blank.webp";
 
     blankAddon.appendChild(blankImg);
+    AddSearchResultName(blankAddon, "Empty");
     addonSearchResultsContainer.appendChild(blankAddon);
 
     blankAddon.addEventListener("click", function() {
@@ -1308,6 +1422,7 @@ function ForceKillerAddonSearch(perkSearchBar) {
         addonImg.src = currentAddon["addonIcon"];
 
         addonElement.appendChild(addonImg);
+        AddSearchResultName(addonElement, currentAddon["Name"]);
         addonSearchResultsContainer.appendChild(addonElement);
 
         addonElement.addEventListener("click", function() {
@@ -1346,56 +1461,23 @@ function ForceKillerAddonSearch(perkSearchBar) {
 
 /**
  * Responsible for updating the error column with the errors in the MasterErrorList. In addition to this, it also is responsible for applying the appropriate class to perk elements to highlight them as red in the loadouts page.
+ *
+ * Next to the rule breaks it lists warnings that are not rule breaks themselves (a disabled killer, empty perk slots).
+ * They are only shown here and are not part of the MasterErrorList.
  */
 function UpdateErrorUI() {
     var errorListContainer = document.getElementById("error-list-container");
     errorListContainer.innerHTML = "";
 
-    let ErrorElementList = [];
-    for (var i = 0; i < MasterErrorList.length; i++) {
-        let currentError = MasterErrorList[i];
-
-        let errorContainer = document.createElement("div");
-        errorContainer.classList.add("error-list-item");
-
-        let errorHeaderContainer = document.createElement("div");
-        errorHeaderContainer.classList.add("error-header-container");
-
-        let errorIcon = document.createElement("img");
-        errorIcon.src = currentError["ICON"];
-        errorIcon.classList.add("error-icon");
-        if (currentError["CRITICAL"]) {
-            errorIcon.classList.add("error-icon-critical");
-        }
-
-        let errorTitle = document.createElement("h1");
-        errorTitle.classList.add("error-title");
-        errorTitle.innerText = currentError["ERROR"];
-
-        let errorDescription = document.createElement("p");
-        errorDescription.innerHTML = currentError["REASON"];
-
-        errorHeaderContainer.appendChild(errorIcon);
-        errorHeaderContainer.appendChild(errorTitle);
-
-        errorContainer.appendChild(errorHeaderContainer);
-        errorContainer.appendChild(errorDescription);
-
-        ErrorElementList.push(errorContainer);
-    }
-
-    
     // Remove all banned perk slot visuals on the frontend.
-    if(document.querySelector(".perk-slot-result-banned")){
-        document.querySelectorAll(".perk-slot-result-banned").forEach(perkSlot => perkSlot.classList.remove("perk-slot-result-banned"))
-    }
+    document.querySelectorAll(".perk-slot-result-banned, .empty-warn").forEach(slot => slot.classList.remove("perk-slot-result-banned", "empty-warn"));
     
     let perkCpt = 0
     if (selectedRole == 0) {
         let survCpt = 0
         for(const surv of SurvivorPerks){
             for(const perk of surv){
-                const survPerk = document.querySelector(`[data-survivor-i-d="${survCpt}"][data-perk-i-d="${perkCpt}"]`)
+                const survPerk = document.querySelector(`#survivor-builds-container [data-survivor-i-d="${survCpt}"][data-perk-i-d="${perkCpt}"]`)
     
                 for(const error of MasterErrorList){
                     if(survPerk && survPerk.classList && perk && error.REASON.includes(perk.name)){
@@ -1411,38 +1493,10 @@ function UpdateErrorUI() {
         }
     } else {
         for(const perk of KillerPerks){
-            DebugLog(`Checking for banned perk on perk slot #${perkCpt} - Perk:`);
-            DebugLog(perk);
-
-            /*
-            Need to get all potentially valid perk slot elements
-            Otherwise the first survivor perk that shares the ID
-            with the killer perk will be highlighted as banned.
-
-            Since they are hidden, you will never see it highlight.
-            */
-            const plausibleElements = document.querySelectorAll(`[data-perk-i-d="${perkCpt}"]`);
-
-            let killerPerk = undefined;
-            for (var i = 0; i < plausibleElements.length; i++) {
-                let currentElement = plausibleElements[i];
-
-                if (currentElement == undefined) { continue; }
-
-                if (currentElement.classList.contains("killer-perk-slot")) {
-                    killerPerk = currentElement;
-                    break;
-                }
-            }
+            const killerPerk = document.querySelector(`#killer-build-component .killer-perk-slot[data-perk-i-d="${perkCpt}"]`);
 
             for(const error of MasterErrorList){
-                DebugLog("CHECKING ERROR:");
-                DebugLog(error);
-
-                if (perk) {
-                    DebugLog(`"KILLERPERK: ${killerPerk} - PERK: ${perk} - ERROR: ${error.REASON} - INCLUDES: ${error.REASON.includes(perk.name)} - CLASSLIST: ${killerPerk.classList} = ${killerPerk && killerPerk.classList && perk && error.REASON.includes(perk.name)}"`);
-                }
-                if(killerPerk && killerPerk.classList && perk && error.REASON.includes(perk.name)){
+                if(killerPerk && perk && error.REASON.includes(perk.name)){
                     killerPerk.classList.add("perk-slot-result-banned")
                     break
                 }
@@ -1452,26 +1506,178 @@ function UpdateErrorUI() {
         }
     }
 
-    // Go through error list and add to container with a delay of 100ms in between each error.
-    let totalTime = 0;
-    for (var i = 0; i < ErrorElementList.length; i++) {
-        let currentError = ErrorElementList[i];
+    const ruleBreaks = MasterErrorList.concat(GetKillerAvailabilityErrors());
+    const warnings = GetEmptyPerkWarnings();
 
-        let timerMS = 50 * i;
+    ruleBreaks.forEach(error => errorListContainer.appendChild(GenerateErrorListItem(error, false)));
+    warnings.forEach(warning => errorListContainer.appendChild(GenerateErrorListItem(warning, true)));
 
-        totalTime += 50;
-        if (totalTime > 2000) {
-            timerMS = 0;
-        }
-
-        setTimeout(function() {
-            errorListContainer.appendChild(currentError);
-        }, timerMS);
+    if (ruleBreaks.length == 0 && warnings.length == 0) {
+        let noErrors = document.createElement("li");
+        noErrors.classList.add("none");
+        noErrors.innerText = "Everything follows the rules.";
+        errorListContainer.appendChild(noErrors);
     }
 
-    var errorPanelTitle = document.getElementById("error-panel-title");
+    const errorsWindow = document.getElementById("errors-window");
+    errorsWindow.classList.toggle("clean", ruleBreaks.length == 0 && warnings.length == 0);
+    errorsWindow.classList.toggle("warned", ruleBreaks.length == 0 && warnings.length > 0);
 
-    errorPanelTitle.innerText = MasterErrorList.length > 0 ? `Errors (${MasterErrorList.length})` : "No Errors";
+    var errorPanelTitle = document.getElementById("error-panel-title");
+    errorPanelTitle.innerText = ruleBreaks.length > 0 ? `Rule breaks · ${ruleBreaks.length}` :
+        warnings.length > 0 ? `Warnings · ${warnings.length}` : "No rule breaks";
+
+    const loadoutTabMark = document.getElementById("loadout-tab-mark");
+    loadoutTabMark.hidden = ruleBreaks.length == 0 && warnings.length == 0;
+    loadoutTabMark.src = ruleBreaks.length > 0 ? "/iconography/ui/bang.webp" : "/iconography/ui/bang-warn.webp";
+
+    UpdateMatchRulesUI();
+    RenderRulesPanel();
+    RenderBansPanel();
+    UpdateShareURL();
+}
+
+/**
+ * Rule breaks about the killer itself: not in the balancing, or disabled in it.
+ * @returns {Array} Error objects.
+ */
+function GetKillerAvailabilityErrors() {
+    if (currentBalancing == null) { return []; }
+
+    const currentName = Killers[selectedKiller].Name;
+    const currentKillerOverride = currentBalancing.KillerOverride[selectedKiller];
+
+    if (currentKillerOverride == undefined) {
+        return [GenerateErrorObject(
+            "Killer Not Found",
+            `Killer <b>${currentName}</b> not found in current balancing! Please select a different killer or change the balancing. Validation won't work.`,
+            undefined,
+            "iconography/CriticalError.webp",
+            true
+        )];
+    }
+
+    if (currentKillerOverride.IsDisabled) {
+        return [GenerateErrorObject(
+            "Killer Disabled",
+            `Killer <b>${currentName}</b> is disabled in the current balancing! You may still select this killer, but they may be ineligible to play in official matches.`,
+            undefined,
+            "iconography/CriticalError.webp",
+            true
+        )];
+    }
+
+    return [];
+}
+
+/**
+ * Warnings for builds that have some perks but not all four. Also marks the empty slots.
+ * @returns {Array} Error objects.
+ */
+function GetEmptyPerkWarnings() {
+    const builds = selectedRole == 0 ? SurvivorPerks : [KillerPerks];
+    const warnings = [];
+
+    builds.forEach((build, buildIndex) => {
+        const emptySlots = [];
+        build.forEach((perk, slotIndex) => {
+            if (perk == undefined) { emptySlots.push(slotIndex); }
+        });
+
+        if (emptySlots.length == 0 || emptySlots.length == build.length) { return; }
+
+        const slotElements = emptySlots.map(slotIndex => selectedRole == 0 ?
+            document.querySelector(`#survivor-builds-container [data-survivor-i-d="${buildIndex}"][data-perk-i-d="${slotIndex}"]`) :
+            document.querySelector(`#killer-build-component .killer-perk-slot[data-perk-i-d="${slotIndex}"]`)
+        ).filter(slot => slot != null);
+        slotElements.forEach(slot => slot.classList.add("empty-warn"));
+
+        const who = selectedRole == 0 ? `Survivor #${buildIndex + 1}` : "the Killer";
+        let warning = GenerateErrorObject(
+            emptySlots.length == 1 ? "Empty Perk Slot" : "Empty Perk Slots",
+            `${emptySlots.length == 1 ? "Slot" : "Slots"} ${emptySlots.map(slotIndex => slotIndex + 1).join(", ")} in <b>${who}</b>'s build ${emptySlots.length == 1 ? "is" : "are"} empty.`,
+            undefined,
+            "iconography/PerkError.webp"
+        );
+        warning.SLOTS = slotElements;
+        warnings.push(warning);
+    });
+
+    return warnings;
+}
+
+/**
+ * Generates an item of the error list. Clicking it scrolls to the slots it is about.
+ * @param {Object} error
+ * @param {Boolean} isWarning
+ * @returns {Element}
+ */
+function GenerateErrorListItem(error, isWarning) {
+    let item = document.createElement("li");
+    if (isWarning) { item.classList.add("warn"); }
+
+    let button = document.createElement("button");
+    button.type = "button";
+
+    let icon = document.createElement("img");
+    icon.src = error["ICON"];
+    icon.alt = "";
+
+    let text = document.createElement("span");
+
+    let title = document.createElement("span");
+    title.classList.add("t");
+    title.innerText = error["ERROR"];
+
+    let description = document.createElement("span");
+    description.classList.add("d");
+    description.innerHTML = error["REASON"];
+
+    text.appendChild(title);
+    text.appendChild(description);
+    button.appendChild(icon);
+    button.appendChild(text);
+    item.appendChild(button);
+
+    button.addEventListener("click", function() {
+        FlashSlots(GetSlotsForError(error, isWarning));
+    });
+
+    return item;
+}
+
+/**
+ * Finds the loadout slots an error is about.
+ * @param {Object} error
+ * @param {Boolean} isWarning
+ * @returns {Array} Slot elements.
+ */
+function GetSlotsForError(error, isWarning) {
+    if (isWarning) { return error.SLOTS || []; }
+
+    // Errors name what they are about in bold; match those names with the slots of the current role.
+    const container = document.getElementById(selectedRole == 0 ? "survivor-builds-container" : "killer-build-component");
+    const markedSlots = [...container.querySelectorAll(".loadout-slot")].filter(slot => slot.dataset.name && error.REASON.includes(slot.dataset.name));
+
+    const survivorMatch = error.REASON.match(/Survivor #(\d)/);
+    if (selectedRole == 0 && survivorMatch) {
+        const survivorIndex = parseInt(survivorMatch[1]) - 1;
+        return markedSlots.filter(slot => slot.dataset.survivorID == survivorIndex);
+    }
+
+    return markedSlots;
+}
+
+function FlashSlots(slots) {
+    if (slots.length == 0) { return; }
+
+    slots[0].scrollIntoView({ block: "center", behavior: "smooth" });
+
+    for (const slot of slots) {
+        slot.classList.remove("flash");
+        void slot.offsetWidth;
+        slot.classList.add("flash");
+    }
 }
 
 /**
@@ -1526,12 +1732,11 @@ function GenerateBalancingSelectOption(presetIndex) {
     if (currentPreset == undefined) { return null; }
     
     let baseOption = document.createElement("button");
+    baseOption.type = "button";
     baseOption.classList.add("balancing-select-option");
 
-    let optionIconContainer = document.createElement("div");
-    optionIconContainer.classList.add("balancing-select-option-icon");
-    
     let optionIcon = document.createElement("img");
+    optionIcon.alt = "";
 
     const balanceType = currentPreset["Type"];
     switch (balanceType) {
@@ -1546,20 +1751,13 @@ function GenerateBalancingSelectOption(presetIndex) {
         break;
     }
 
-    optionIconContainer.appendChild(optionIcon);
-    baseOption.appendChild(optionIconContainer);
+    baseOption.appendChild(optionIcon);
 
-    let optionTextContainer = document.createElement("div");
-    optionTextContainer.classList.add("balancing-select-option-text-container");
+    let optionTextContainer = document.createElement("span");
 
-    let optionTextTitle = document.createElement("p");
-    optionTextTitle.classList.add("balancing-select-option-title");
+    let optionTextTitle = document.createElement("span");
+    optionTextTitle.classList.add("n");
     optionTextTitle.innerText = currentPreset["Name"];
-
-    optionTextContainer.appendChild(optionTextTitle);
-    
-    let optionTextLastUpdated = document.createElement("p");
-    optionTextLastUpdated.classList.add("balancing-select-last-updated");
 
     // Convert epoch to human-readable date (MM/DD/YYYY HH:MM:SS AM/PM)
     const lastUpdated = currentPreset["LastUpdated"];
@@ -1574,18 +1772,27 @@ function GenerateBalancingSelectOption(presetIndex) {
         second: '2-digit'
     });
 
-    optionTextLastUpdated.innerHTML = `<b>Last Updated:</b> ${formattedDate}`;
+    let optionTextLastUpdated = document.createElement("span");
+    optionTextLastUpdated.classList.add("m");
+    optionTextLastUpdated.innerText = `Last Updated: ${formattedDate}`;
 
+    optionTextContainer.appendChild(optionTextTitle);
+    optionTextContainer.appendChild(document.createElement("br"));
     optionTextContainer.appendChild(optionTextLastUpdated);
-
     baseOption.appendChild(optionTextContainer);
+
+    let optionType = document.createElement("span");
+    optionType.classList.add("tag");
+    optionType.innerText = balanceType || "Manual";
+    baseOption.appendChild(optionType);
     
     baseOption.dataset.balancePresetID = currentPreset["ID"];
     baseOption.dataset.aliases = currentPreset["Aliases"];
     baseOption.dataset.name = currentPreset["Name"];
 
-    if (currentBalancingIndex == currentPreset["ID"]) {
+    if (!customBalanceOverride && currentBalancingIndex == currentPreset["ID"]) {
         baseOption.classList.add("league-selected");
+        baseOption.setAttribute("aria-current", "true");
     }
 
     baseOption = ApplyBalancingOptionEvents(baseOption, presetIndex);
@@ -1595,43 +1802,24 @@ function GenerateBalancingSelectOption(presetIndex) {
 
 /**
  * Clears and repopulates the balancing select menu with all of the balancing select options.
- * @param {function} generationCondition Returns true if the element is to be generated, otherwise returns false.
-*/
+ */
 function PopulateBalancingSelectMenu() {
     PopulateBalancingSelectMenuFromSearch("");
 }
 
 function PopulateBalancingSelectMenuFromSearch(searchQuery) {
     const balanceOptionsContainer = document.getElementById("balancing-select-options-container");
-    const balancingSelectMenu = document.getElementById("balancing-select-menu");
     
     RemoveAllBalancingSelectMenuChildren();
 
     for (let i = 0; i < BalancePresets.length; i++) {
         const currentID = BalancePresets[i]["ID"];
 
-        if (currentID == currentBalancingIndex) {
+        if (!GetBalanceSelectOptionVisibilityInSearch(currentID, searchQuery, false)) {
             continue;
         }
 
-        if (!GetBalanceSelectOptionVisibilityInSearch(currentID, searchQuery)) {
-            continue;
-        }
-
-        let newOption = GenerateBalancingSelectOption(i);
-        if (balancingSelectMenu.dataset.proposedPresetID != undefined) {
-            const proposedID = balancingSelectMenu.dataset.proposedPresetID;
-
-            if (!isNaN(proposedID)) { // If the ID is a number
-                if (currentID == proposedID) {
-                    newOption.classList.add("proposed-league-selection");
-                }
-            } else {
-                delete balancingSelectMenu.dataset.proposedPresetID;
-            }
-        }
-
-        balanceOptionsContainer.appendChild(newOption);
+        balanceOptionsContainer.appendChild(GenerateBalancingSelectOption(i));
     }
 }
 
@@ -1661,19 +1849,31 @@ function GenerateAllKillerPortraits() {
  * @returns 
  */
 function GenerateKillerPortrait(killerObj) {
-    /*
-    div.character-select-button(data-killerID="1")
-    img(src="iconography/portraits/Wraith.webp")
-    */
-
-    const selectButtonHolder = document.createElement("div");
+    const selectButtonHolder = document.createElement("button");
+    selectButtonHolder.type = "button";
     selectButtonHolder.classList.add("character-select-button");
     selectButtonHolder.dataset.killerid = killerObj.ID;
 
     const img = document.createElement("img");
     img.src = killerObj.Portrait;
+    img.alt = "";
+
+    const name = document.createElement("span");
+    name.innerText = killerObj.Name.replace(/^The /, "");
+
+    const tier = document.createElement("span");
+    tier.classList.add("tier");
+
+    const banMark = document.createElement("img");
+    banMark.classList.add("ban-at");
+    banMark.src = "iconography/ui/ban.svg";
+    banMark.alt = "";
+    banMark.hidden = true;
 
     selectButtonHolder.appendChild(img);
+    selectButtonHolder.appendChild(name);
+    selectButtonHolder.appendChild(tier);
+    selectButtonHolder.appendChild(banMark);
 
     return selectButtonHolder;
 }

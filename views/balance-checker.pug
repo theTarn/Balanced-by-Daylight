@@ -1,226 +1,207 @@
-<!DOCTYPE html>
-html
-    head 
-        title Balanced by Daylight: Balance Checker
-        link(rel="stylesheet", href="/stylesheets/balance-checker.css")
-        link(rel="icon", href="iconography/favicon.ico" type="image/x-icon")
-        script(src="https://cdnjs.cloudflare.com/ajax/libs/pako/2.1.0/pako.min.js")
+extends layout.pug
 
-        script(src="/scripts/checker/checker-globals.js", type="text/javascript", defer="defer")
-        script(src="/scripts/checker/checker-constants.js", type="text/javascript", defer="defer")
+block head
+    link(rel="stylesheet" href=`/stylesheets/balance-checker.css?v=${assetVersion}`)
+    script(src="https://cdnjs.cloudflare.com/ajax/libs/pako/2.1.0/pako.min.js")
 
-        script(src="/scripts/checker/checker-utility.js", type="text/javascript", defer="defer")
-        script(src="/scripts/checker/checker-modal.js", type="text/javascript", defer="defer")
-        script(src="/scripts/checker/checker-search.js", type="text/javascript", defer="defer")
-        script(src="/scripts/checker/checker-events.js", type="text/javascript", defer="defer")
-        script(src="/scripts/checker/checker-error-validation.js", type="text/javascript", defer="defer")
-        script(src="/scripts/checker/checker-frontend.js", type="text/javascript", defer="defer")
-        script(src="/scripts/checker/checker-resources.js", type="text/javascript", defer="defer")
+    each file in ["globals", "constants", "utility", "modal", "search", "events", "error-validation", "frontend", "tabs", "resources", "main"]
+        script(src=`/scripts/checker/checker-${file}.js?v=${assetVersion}` type="text/javascript" defer="defer")
 
-        script(src="/scripts/checker/checker-main.js", type="text/javascript", defer="defer")
+block header
+    button#settings-button.tool.framed(type="button" title="Checker settings" aria-label="Checker settings")
+        img(src="/iconography/Settings.webp" alt="")
+    div.ctx
+        button#balancing-select-button.pick.t(type="button")
+            img(src="/iconography/ui/trophy.webp" alt="")
+            span.txt
+                span.l Tournament
+                span#selected-balance-title.v
+            span.caret ▼
+        button#killer-select-button.pick.k(type="button")
+            img#selected-killer-portrait(alt="")
+            span.txt
+                span#selected-killer-label.l Killer
+                span#selected-killer-title.v
+            span.caret ▼
 
-        meta(name="viewport" content="width=device-width, initial-scale=1.0")
-    body(onload="BeginResourceChain()")
-        div#primary-balance-container
-            div#balance-tabs-container
-                div#role-swap-button(class="tier-selector-button")
-                    img#role-swap-icon(src="iconography/Killer.webp")
-                div#notes-button(class="tier-selector-button" onclick="GenerateNotesModal()")
-                    img(src="iconography/Info.webp")
-                div#maps-button(class="tier-selector-button" onclick="GenerateMapModal()")
-                    img(src="iconography/Maps.webp")
-                div#settings-button(class="tier-selector-button")
-                    img(src="iconography/Settings.webp")
-                div#discord-button(class="tier-selector-button" onclick="window.open('https://discord.gg/E6zfpwvCce', '_blank')")
-                    img(src="iconography/Discord.webp")
-                div.tier-selector-button(onclick="window.location.href = '/'")
-                    img(src="iconography/Logo-Shadow.webp")
-            div#balance-character-select-container
-                h1 Killer Selection
-                div#character-select-grid(class="override-scrollbar")
-                    - var l = 10;
-                    while l > 0
-                        div.lazy-character-loader
-                        - l--;
-            div#main-balance-window
-                h2#selected-balance-title Selected Balance: {BALANCE NAME}
-                div.horizontal-flex
-                    h2#selected-killer-title Selected Killer: {KILLER NAME}
-                    div#anticamp-icon-container
-                        img#anticamp-badge(src="iconography/Anticamp-Permitted.webp")
-                        div#anticamp-tooltip(hidden="true")
-                h2#selected-role-header Survivor Builds
-                div#survivor-builds-container(class="hide-component")
-                    div.survivor-build-component
-                        div.perk-slot(class="loadout-slot")
-                            img(src="public/Perks/Survivors/Adrenaline.webp")
-                        div.perk-slot(class="loadout-slot")
-                            img(src="public/Perks/Survivors/Deliverance.webp")
-                        div.perk-slot(class="loadout-slot")
-                            img(src="public/Perks/Survivors/Hope.webp")
-                        div.perk-slot(class="loadout-slot")
-                            img(src="public/Perks/Survivors/Kinship.webp")
-                        div.offering-slot(class="loadout-slot")
-                            img(src="public/Offerings/Annotated-Blueprint.webp")
-                        div.item-slot(class="loadout-slot")
-                            img(src="public/Items/Flashlight.webp")
-                        div.addon-slot(class="loadout-slot" data-addonSlot="0")
-                            img(src="public/Addons/Long-Life-Battery.webp")
-                        div.addon-slot(class="loadout-slot" data-addonSlot="1")
-                            img(src="public/Addons/Low-Amp-Filament.webp")
-                    div.survivor-build-component
-                        div.perk-slot(class="loadout-slot")
-                            img(src="public/Perks/Survivors/Adrenaline.webp")
-                        div.perk-slot(class="loadout-slot")
-                            img(src="public/Perks/Survivors/Deliverance.webp")
-                        div.perk-slot(class="loadout-slot")
-                            img(src="public/Perks/Survivors/Hope.webp")
-                        div.perk-slot(class="loadout-slot")
-                            img(src="public/Perks/Survivors/Kinship.webp")
-                        div.offering-slot(class="loadout-slot")
-                            img(src="public/Offerings/Annotated-Blueprint.webp")
-                        div.item-slot(class="loadout-slot")
-                            img(src="public/Items/Flashlight.webp")
-                        div.addon-slot(class="loadout-slot" data-addonSlot="0")
-                            img(src="public/Addons/Long-Life-Battery.webp")
-                        div.addon-slot(class="loadout-slot" data-addonSlot="1")
-                            img(src="public/Addons/Low-Amp-Filament.webp")
-                    div.survivor-build-component
-                        div.perk-slot(class="loadout-slot")
-                            img(src="public/Perks/Survivors/Adrenaline.webp")
-                        div.perk-slot(class="loadout-slot")
-                            img(src="public/Perks/Survivors/Deliverance.webp")
-                        div.perk-slot(class="loadout-slot")
-                            img(src="public/Perks/Survivors/Hope.webp")
-                        div.perk-slot(class="loadout-slot")
-                            img(src="public/Perks/Survivors/Kinship.webp")
-                        div.offering-slot(class="loadout-slot")
-                            img(src="public/Offerings/Annotated-Blueprint.webp")
-                        div.item-slot(class="loadout-slot")
-                            img(src="public/Items/Flashlight.webp")
-                        div.addon-slot(class="loadout-slot" data-addonSlot="0")
-                            img(src="public/Addons/Long-Life-Battery.webp")
-                        div.addon-slot(class="loadout-slot" data-addonSlot="1")
-                            img(src="public/Addons/Low-Amp-Filament.webp")
-                    div.survivor-build-component
-                        div.perk-slot(class="loadout-slot")
-                            img(src="public/Perks/Survivors/Adrenaline.webp")
-                        div.perk-slot(class="loadout-slot")
-                            img(src="public/Perks/Survivors/Deliverance.webp")
-                        div.perk-slot(class="loadout-slot")
-                            img(src="public/Perks/Survivors/Hope.webp")
-                        div.perk-slot(class="loadout-slot")
-                            img(src="public/Perks/Survivors/Kinship.webp")
-                        div.offering-slot(class="loadout-slot")
-                            img(src="public/Offerings/Annotated-Blueprint.webp")
-                        div.item-slot(class="loadout-slot")
-                            img(src="public/Items/Flashlight.webp")
-                        div.addon-slot(class="loadout-slot" data-addonSlot="0")
-                            img(src="public/Addons/Long-Life-Battery.webp")
-                        div.addon-slot(class="loadout-slot" data-addonSlot="1")
-                            img(src="public/Addons/Low-Amp-Filament.webp")
-                div#killer-builds-container
-                    div#killer-build-component
-                        div.perk-slot(class="loadout-slot killer-perk-slot")
-                            img(src="public/Perks/Killers/Agitation.webp")
-                        div.perk-slot(class="loadout-slot killer-perk-slot")
-                            img(src="public/Perks/Killers/Brutal-Strength.webp")
-                        div.perk-slot(class="loadout-slot killer-perk-slot")
-                            img(src="public/Perks/Killers/Enduring.webp")
-                        div.perk-slot(class="loadout-slot killer-perk-slot")
-                            img(src="public/Perks/Killers/Insidious.webp")
-                        div.power-slot(class="loadout-slot killer-perk-slot")
-                            img(src="public/Powers/Trapper.webp")
-                        div.addon-slot(class="loadout-slot killer-perk-slot" data-addonSlot="0")
-                            img(src="public/PowerAddons/Trapper/4-Coil-Spring-Kit.webp")
-                        div.addon-slot(class="loadout-slot killer-perk-slot" data-addonSlot="1")
-                            img(src="public/PowerAddons/Trapper/Bear-Oil.webp")
-                div#import-export-button-container
-                    button#import-button(type="button") Import Image
-                        input#import-image(type="file" name="image" accept="image/*" hidden)
-                    button#export-button Export Loadout
-                    button#generate-image-button Generate Image
-                    button#clear-loadout-button Clear Loadout
-            div#errors-window
-                h1#error-panel-title Errors
-                div#error-list-container(class="override-scrollbar")
-        div#perk-search-container(class="background-blur" hidden="hidden")
-            div#perk-search-module-container
-                div.perk-search-bar-module
-                    input#perk-search-bar(type="text", placeholder="Search Perks...")
-                div#perk-search-results-module(class="override-scrollbar")
-                    div.perk-slot-result
-                        img(src="public/Perks/Survivors/Adrenaline.webp")
-                h3#perk-highlight-name Select a Perk...
-        div#settings-container(hidden="hidden")
-            div#settings-blur(class="background-blur")
-                div#settings-menu
-                    h1 Settings Menu
-                    button#balancing-select-button Select a Preset...
-                    br
-                    label(for="custom-balancing-checkbox") Enable Custom Balancing?
-                    input#custom-balancing-checkbox(type="checkbox")
-                    br
-                    textarea#custom-balance-select(class="override-scrollbar", placeholder="Enter Custom Balance JSON...", rows="15", hidden="hidden")
-                    br
-                    label(for="only-non-banned") Only show allowed Perks/Offerings/Items?
+block content
+    div.subbar.gutter
+        div.col
+            div.rolestep(role="group" aria-label="Check as")
+                div.in
+                    button#role-killer-button(type="button" data-role="1" aria-pressed="false")
+                        img(src="/iconography/Killer.webp" alt="")
+                        span.rl Killer
+                    button#role-survivor-button(type="button" data-role="0" aria-pressed="true")
+                        img(src="/iconography/Survivor.webp" alt="")
+                        span.rl Survivors
+            div.tabrow
+                nav#checker-tabs.tabs(role="tablist")
+                    button(type="button" role="tab" data-tab="loadout" aria-selected="true")
+                        | Loadout
+                        img#loadout-tab-mark.bang(src="/iconography/ui/bang.webp" alt="" hidden)
+                    button(type="button" role="tab" data-tab="rules" aria-selected="false")
+                        | Notes &amp; Maps
+                        img#rules-tab-mark.bang(src="/iconography/ui/bang.webp" alt="" hidden)
+                    button(type="button" role="tab" data-tab="bans" aria-selected="false")
+                        | Bans
+                        sup#bans-tab-count
+
+    div.gutter
+        main#main-balance-window.col
+            section#loadout-panel(data-panel="loadout")
+                h2.stitle
+                    span#selected-role-header Survivor Builds
+                    small#selected-role-subtitle
+                div#survivor-builds-container
+                    each survivor in [1, 2, 3, 4]
+                        div.build
+                            div.who Survivor #{survivor}
+                            div.survivor-build-component.slots
+                div#killer-builds-container(class="hide-component")
+                    div.build
+                        div#killer-build-name.who Killer
+                        div#killer-build-component.slots
+                div#import-export-button-container.actions
+                    button#import-button.btn(type="button") Import Image
+                    button#export-button.btn(type="button") Export Loadout
+                    button#generate-image-button.btn(type="button") Generate Image
+                    button#clear-loadout-button.btn.danger(type="button") Clear Loadout
+            section#rules-panel(data-panel="rules" hidden)
+            section#bans-panel(data-panel="bans" hidden)
+                div.bansearch
+                    input#bans-search-input(type="search" placeholder="Search perks, items, add-ons, offerings" autocomplete="off")
+                div#bans-list
+            div#loadout-side.side
+                aside#errors-window.errors.clean
+                    h2#error-panel-title.err-title No Errors
+                    ul#error-list-container.errlist
+                section#match-rules.matchcard
+                section#killer-maps.matchcard
+
+    //- Killer selection
+    div#balance-character-select-container.scrim(hidden)
+        div.dlg(role="dialog" aria-modal="true" aria-label="Choose a killer")
+            div.dlg-head
+                h2 Choose a killer
+                button.dlg-x(type="button" data-close aria-label="Close") ✕
+            div.dlg-search
+                input#killer-search-input(type="search" placeholder="Search killers" autocomplete="off")
+                label
+                    input#hide-disabled-killers(type="checkbox")
+                    | Hide disabled killers
+            div.dlg-body
+                div#character-select-grid.kgrid
+
+    //- Tournament (balancing) selection
+    div#balancing-select-container.scrim(hidden)
+        div#balancing-select-menu.dlg(role="dialog" aria-modal="true" aria-label="Tournament")
+            div.dlg-head
+                h2#balancing-select-title Tournament
+                button#balancing-select-close-button.dlg-x(type="button" data-close aria-label="Close") ✕
+            div.dlg-tabs(role="tablist")
+                button(type="button" role="tab" data-balancing-tab="choose" aria-selected="true") Choose
+                button(type="button" role="tab" data-balancing-tab="custom" aria-selected="false") Custom balancing
+            div#balancing-choose-tab
+                div.dlg-search
+                    input#balancing-select-search-input(type="search" placeholder="Search for Balancing Presets..." autocomplete="off")
+                div.dlg-body
+                    div#balancing-select-options-container.opts
+            div#balancing-custom-tab.dlg-body.upload(hidden)
+                p#balancing-select-subtitle Paste a balancing exported from Create. It is saved in this browser.
+                textarea#custom-balance-select(placeholder="Enter Custom Balance JSON..." spellcheck="false")
+                p#custom-error.msg.bad(hidden)
+                div.row
+                    button#custom-balance-save-button.btn.primary(type="button") Save &amp; Use
+
+    //- Perk, offering, item and add-on search
+    div#perk-search-container.scrim(hidden)
+        div#perk-search-module-container.dlg(role="dialog" aria-modal="true")
+            div.dlg-head
+                h2#perk-search-title Choose a perk
+                button.dlg-x(type="button" data-close aria-label="Close") ✕
+            div.dlg-search
+                input#perk-search-bar(type="search" placeholder="Search Perks..." autocomplete="off")
+                label
+                    input#only-non-banned-search(type="checkbox")
+                    | Only show allowed
+            div.dlg-body
+                p#perk-highlight-name.muted Select a Perk...
+                div#perk-search-results-module.pgrid
+
+    //- Settings
+    div#settings-container.scrim(hidden)
+        div#settings-menu.dlg.narrow(role="dialog" aria-modal="true" aria-label="Checker settings")
+            div.dlg-head
+                h2 Checker settings
+                button#settings-cancel-button.dlg-x(type="button" data-close aria-label="Close") ✕
+            div.dlg-body.settings
+                h3 Picking
+                label.setting
                     input#only-non-banned(type="checkbox")
-                    br
-                    label(for="auto-show-notes") Automatically show notes on change?
+                    span Only show allowed Perks/Offerings/Items
+                        small Hide banned perks, offerings and items in search. You can still flip it per search.
+                label.setting
+                    input#hide-disabled-killers-setting(type="checkbox")
+                    span Hide disabled killers
+                        small Leave killers this tournament doesn't allow out of the killer list.
+                h3 Notes
+                label.setting
                     input#auto-show-notes(type="checkbox")
-                    br
-                    span#save-loadouts-killer-container(hidden="hidden")
-                        label(for="save-loadouts-killer") Auto-save Loadouts & Killer selected?
+                    span Mark new notes
+                        small Show ! on the Notes &amp; Maps tab when the tournament or killer has notes you haven't opened yet.
+                h3 On this device
+                span#save-loadouts-killer-container(hidden)
+                    label.setting
                         input#save-loadouts-killer(type="checkbox")
-                    span#import-killer-choice-in-images-container()
-                        label(for="import-killer-choice-input") Import Killer selection during image import?
-                        input#import-killer-choice-input(type="checkbox")
-                    br
-                    div#custom-error(class="error-flash-animation" hidden="hidden")
-                        p Custom Balance JSON is invalid. Please verify your JSON <a href="https://jsonlint.com/" target="_blank">here</a>.
-                    p Made by Kyle Starr and <span style="color:#30beff;cursor:pointer;text-decoration:underline;" onclick="DisplayCredits()">Contributors</span> (v1.5.0)
-                    div#settings-button-container
-                        button#settings-clear-storage-button Clear Settings
-                        button#settings-cancel-button Close
-        div#balancing-select-container(hidden="hidden")
-            div#balancing-select-blur(class="background-blur")
-                div#balancing-select-menu
-                    h1#balancing-select-title Balancing Select
-                    p#balancing-select-subtitle Select your desired balancing preset from the options below:
-                    input#balancing-select-search-input(type="search" placeholder="Search for Balancing Presets...")
-                    div#balancing-select-options-container
-                    button#balancing-select-close-button Cancel
-                    
-        div#image-gen-container(hidden="hidden")
-            div#image-gen-blur(class="background-blur")
-                div#image-gen-menu
-                    h1#image-gen-title Test
-                    p#image-gen-message Test
-                    img#image-gen-image(hidden="hidden")
-                    div#image-gen-button-container
-                        button#image-gen-ok-button OK
+                        span Auto-save Loadouts &amp; Killer selected
+                            small Saved in this browser only. Links always carry their own loadout.
+                label.setting
+                    input#import-killer-choice-input(type="checkbox")
+                    span Import Killer selection during image import
+                        small Uses the killer detected in the imported image.
+                div#settings-clear-confirm.confirm
+                    button#settings-clear-storage-button.btn.danger(type="button") Clear Settings
 
-        div#modal-import-container(hidden="hidden")
-            div#modal-import-blur(class="background-blur")
-                div#modal-import-content
-                    h1#modal-import-title Import Image
-                    div#modal-import-drop-zone
-                        span 
-                            | Click here
-                            br
-                            | or
-                            br
-                            | Drag & Drop an image
-                    div#modal-import-button
-                        input#import-image(type="file" name="image" accept="image/*" hidden)
-                        button#modal-import-cancel-button Cancel
+    //- Generated image
+    div#image-gen-container.scrim(hidden)
+        div#image-gen-menu.dlg(role="dialog" aria-modal="true")
+            div.dlg-head
+                h2#image-gen-title Generating Image...
+            div.dlg-body
+                p#image-gen-message
+                img#image-gen-image.genimg(hidden alt="Generated loadout image")
+                div#image-gen-button-container.dlg-actions
+                    button#image-gen-ok-button.btn.primary(type="button") OK
 
-        div#alert-container(hidden="hidden")
-            div#alert-blur(class="background-blur")
-                div#alert-menu
-                    h1#alert-title Test
-                    h2(id="alert-link-notice" style="font-size: 1em; color: #efefef; text-shadow: 0 0 1px #000; background-color: #ff000080; border-radius: 10px; padding: 5px;" hidden="true")
-                        | Warning: This balancing preset contains a link! This link is unaffiliated with Balanced by Daylight and you are encouraged to exercise caution when clicking on unknown links.
-                    p#alert-message Test
-                    div#alert-button-container
-                        button#alert-ok-button OK
+    //- Image import
+    div#modal-import-container.scrim(hidden)
+        div#modal-import-content.dlg.narrow(role="dialog" aria-modal="true" aria-label="Import Image")
+            div.dlg-head
+                h2#modal-import-title Import Image
+                button.dlg-x(type="button" data-close aria-label="Close") ✕
+            div.dlg-body
+                div#modal-import-drop-zone.dropzone
+                    span
+                        | Click here
+                        br
+                        | or
+                        br
+                        | Drag &amp; Drop an image
+                div#modal-import-button.dlg-actions
+                    input#import-image(type="file" name="image" accept="image/*" hidden)
+                    button#modal-import-cancel-button.btn(type="button") Cancel
+
+    //- Alerts
+    div#alert-container.scrim(hidden)
+        div#alert-menu.dlg.narrow(role="dialog" aria-modal="true")
+            div.dlg-head
+                h2#alert-title
+            div.dlg-body
+                div#alert-message.alert-body
+                div#alert-button-container.dlg-actions
+                    button#alert-ok-button.btn.primary(type="button") OK
+
+block scripts
+    script.
+        window.addEventListener("load", () => BeginResourceChain());

@@ -28,6 +28,10 @@ var onlyShowNonBanned = false;
 var saveLoadoutsAndKiller = false;
 var showNotesOnLaunch = true;
 var importKillerChoice = true;
+var hideDisabledKillers = false;
+
+// The address bar is only updated once a loadout from the URL (if any) has been imported.
+var shareURLReady = false;
 
 var currentBalancing = null;
 
@@ -115,3 +119,4 @@ if(localStorage.getItem("onlyShowNonBanned")) onlyShowNonBanned = localStorage.g
 if(localStorage.getItem("saveLoadoutsAndKiller")) saveLoadoutsAndKiller = localStorage.getItem("saveLoadoutsAndKiller") == "true";
 if (localStorage.getItem("showNotesOnLaunch")) showNotesOnLaunch = localStorage.getItem("showNotesOnLaunch") == "true";
 if (localStorage.getItem("importKillerChoice")) importKillerChoice = localStorage.getItem("importKillerChoice") == "true";
+if (localStorage.getItem("hideDisabledKillers")) hideDisabledKillers = localStorage.getItem("hideDisabledKillers") == "true";

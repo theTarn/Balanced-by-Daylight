@@ -15,6 +15,7 @@ function GetBannedKillerAddons() {
 
     if (currentBalancing == undefined || currentBalancing == {}) { return null; }
     if (KillerAddonsList == undefined) { return null; }
+    if (currentBalancing.KillerOverride[selectedKiller] == undefined) { return []; }
 
     let bannedAddons = new Array()
 
@@ -80,6 +81,7 @@ function GetBannedAddons(itemType) {
 
     if (currentBalancing == undefined || currentBalancing == {}) { return null; }
     if (Items == undefined) { return null; }
+    if (currentBalancing.KillerOverride[selectedKiller] == undefined) { return []; }
 
     let bannedAddons = new Array()
 
@@ -97,61 +99,6 @@ function GetBannedAddons(itemType) {
     }
 
     return bannedAddons;
-}
-
-/**
- * Responsible for setting the custom balancing override based on the value of the custom balance input box in the settings menu.
- * @returns {Objec} The custom balance preset object.
- */
-function GetCustomBalancing() {
-    var customBalanceInput = document.getElementById("custom-balance-select");
-    var customBalanceLabel = document.getElementById("balance-mode-label");
-    var customBalanceDropdown = document.getElementById("balancing-select");
-
-    var balanceTypeBox = document.getElementById("balance-type-box");
-
-    var customBalanceObj = {};
-    
-    // 0 = Invalid JSON | 1 = Valid JSON, but invalid balance format
-    let errorType = 0;
-    try {
-        customBalanceObj = JSON.parse(customBalanceInput.value);
-        errorType++;
-
-        if (!ValidateCustomBalancing(customBalanceObj)) {
-            throw "Invalid JSON for custom balancing. Using default balancing.";
-        }
-    } catch (error) {
-        //alert("Invalid JSON for custom balancing. Using default balancing.");
-        
-        switch(errorType) {
-            case 0:
-                GenerateAlertModal("Invalid JSON", "The JSON used is not valid JSON. You can validate your JSON <a href='https://jsonlint.com/' target='_blank'>here</a>.\n\nUsing default balancing.");
-                break;
-            case 1:
-                GenerateAlertModal("Invalid Balance Format", "The JSON used is valid JSON, but is not in the correct format. Please refer to the balance creator to generate the correct format.\n\nUsing default balancing.");
-                break;
-        }        
-        
-        customBalanceInput.innerHTML = "";
-        customBalanceInput.hidden = true;
-
-        customBalanceDropdown.hidden = false;
-        customBalanceLabel.hidden = false;
-        balanceTypeBox.hidden = false;
-
-        var customBalanceCheckbox = document.getElementById("custom-balancing-checkbox");
-        customBalanceCheckbox.checked = false;
-        customBalanceOverride = customBalanceCheckbox.checked;
-        localStorage.setItem("customBalanceOverride", customBalanceOverride);
-        
-        currentBalancingIndex = 0;
-        localStorage.setItem("currentBalancingIndex", currentBalancingIndex);
-
-        currentBalancing = GetBalancePresetByID(currentBalancingIndex)["Balancing"];
-    }
-
-    return customBalanceObj;
 }
 
 /**
@@ -806,7 +753,7 @@ function GetExportData() {
         "killerOfferingId": killerOfferingId,
         "killerAddonsId": killerAddonsId,
         "selectedKiller": selectedKiller,
-        "AntiFacecampPermitted": currentBalancing.KillerOverride[selectedKiller].AntiFacecampPermitted,
+        "AntiFacecampPermitted": currentBalancing.KillerOverride[selectedKiller]?.AntiFacecampPermitted,
         "currentBalancingIndex": currentBalancingIndex,
         "customBalanceOverride": customBalanceOverride,
         "onlyShowNonBanned": onlyShowNonBanned,
@@ -830,6 +777,8 @@ function GetExportData() {
  */
 function GetBannedPerks() {
     let bannedPerks = new Array()
+
+    if (currentBalancing.KillerOverride[selectedKiller] == undefined) { return bannedPerks; }
     
     // Concatenate survivor perk bans
     bannedPerks = bannedPerks.concat(currentBalancing.KillerOverride[selectedKiller].SurvivorIndvPerkBans)
@@ -881,6 +830,8 @@ function GetBannedOfferings() {
         "Killer": new Array()
     }
 
+    if (currentBalancing.KillerOverride[selectedKiller] == undefined) { return bannedOfferings; }
+
     // Get survivor offerings from killer override
     let survivorOfferings = currentBalancing.KillerOverride[selectedKiller].SurvivorOfferings;
 
@@ -916,6 +867,8 @@ function GetBannedItems() {
     if (Items == undefined) { return null; }
 
     let bannedItems = new Array()
+
+    if (currentBalancing.KillerOverride[selectedKiller] == undefined) { return bannedItems; }
 
     // Get items from killer override
     let items = currentBalancing.KillerOverride[selectedKiller].ItemWhitelist;
@@ -1608,25 +1561,19 @@ function SetSelectedKillerByName(currentName) {
         }
     }
 
-    if (!killerFound) {
-        GenerateAlertModal("Killer Not Found", `Killer <b>${currentName}</b> not found in current balancing! Please select a different killer or change the balancing.`);
-        return;
-    }
-
-    selectedKiller = currentOverrides.findIndex(override => override.Name == currentName);
+    selectedKiller = killerFound ?
+        currentOverrides.findIndex(override => override.Name == currentName) :
+        Killers.findIndex(killer => killer.Name == currentName);
     localStorage.setItem("selectedKiller", selectedKiller);
-
-    let currentKillerOverride = currentBalancing.KillerOverride[selectedKiller];
 
     if (currentKlr != selectedKiller) {
         if (selectedRole != 0) {
             ClearKillerAddons();
         }
-        if (currentKillerOverride.IsDisabled != undefined) {
-            let isDisabled = currentKillerOverride.IsDisabled;
-            if (isDisabled) {
-                GenerateAlertModal("Killer Disabled", `Killer <b>${currentName}</b> is disabled in the current balancing! You may still select this killer, but they may be ineligible to play in official matches.`);
-            }
+
+        const killerNotice = GetKillerAvailabilityNotice();
+        if (killerNotice) {
+            ShowNotice(killerNotice, "error");
         }
     }
 
@@ -1635,12 +1582,10 @@ function SetSelectedKillerByName(currentName) {
         KillerAddons = [undefined, undefined];
     }
 
-    CheckIndividualKillerNotes(); // If autoshow notes setting is enabled, show notes for the selected killer.
+    CheckIndividualKillerNotes(); // If the setting is enabled, marks new notes for the selected killer.
     CheckForBalancingErrors();
     UpdateKillerSelectionUI();
     UpdateAntiFacecampUI();
-                
-    ScrollToSelectedKiller();
 }
 
 function GetLoadoutFromImportCode(importCode) {

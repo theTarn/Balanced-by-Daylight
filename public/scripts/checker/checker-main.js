@@ -16,7 +16,7 @@ function main() {
 
     // Loads survivor perks from local storage if enabled
     if (Config.saveBuilds) {
-        document.getElementById("save-loadouts-killer-container").style.display = "block";
+        document.getElementById("save-loadouts-killer-container").hidden = false;
 
         if(saveLoadoutsAndKiller){
             if(localStorage.getItem("selectedKiller")) selectedKiller = parseInt(localStorage.getItem("selectedKiller"));
@@ -145,14 +145,14 @@ function main() {
     // Update Balancing Selection UI
     UpdateBalanceSelectionUI();
 
-    // Set Anti-Facecamp Badge Events
-    SetAntiFacecampBadgeEvents();
-
     // Update Anti-Facecamp UI
     UpdateAntiFacecampUI();
 
-    // Update the checkbox to show non-banned perks in the search
-    document.getElementById("only-non-banned").checked = onlyShowNonBanned;
+    // Update the checkboxes to show non-banned perks in the search
+    SetOnlyShowNonBanned(onlyShowNonBanned);
+
+    // Update the checkboxes to hide disabled killers
+    SetHideDisabledKillers(hideDisabledKillers);
 
     // Update the auto-show notes checkbox
     document.getElementById("auto-show-notes").checked = showNotesOnLaunch;
@@ -162,19 +162,11 @@ function main() {
 
     document.getElementById("import-killer-choice-input").checked = importKillerChoice;
 
-    // Update the custom balance checkbox to show if custom balancing is enabled
-    document.getElementById("custom-balancing-checkbox").checked = customBalanceOverride;
-
-    // Update the custom balance text area to show the current custom balancing
-    if (customBalanceOverride) {
-        document.getElementById("custom-balance-select").value = JSON.stringify(currentBalancing, null, 4);
-
-        // Show the custom balancing text area
-        document.getElementById("custom-balance-select").hidden = false;
-    }
-
     AttemptApplyURLImport();
 
+    shareURLReady = true;
+
+    UpdateKillerSelectionUI();
     CheckForBalancingErrors();
 }
 
@@ -198,6 +190,8 @@ function LoadButtonEvents() {
     LoadClearLoadoutButton();
 
     LoadPerkSearchEvents();
+
+    LoadCheckerTabEvents();
 }
 
 /**
@@ -215,6 +209,15 @@ function LoadPerkSelectionEvents() {
  * A bridge between checking the balancing for the survivor role or the killer role.
  */
 function CheckForBalancingErrors() {
+    // A killer that is not in the balancing has no rules to check against; the error list says so.
+    if (currentBalancing.KillerOverride[selectedKiller] == undefined) {
+        MasterErrorList = [];
+        document.querySelectorAll(".banned-offering, .banned-item, .banned-addon, .duplicate-addon")
+            .forEach(slot => slot.classList.remove("banned-offering", "banned-item", "banned-addon", "duplicate-addon"));
+        UpdateErrorUI();
+        return;
+    }
+
     if (selectedRole == 0) {
         CheckForSurvivorBalanceErrors();
     } else {
