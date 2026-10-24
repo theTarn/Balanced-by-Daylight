@@ -2844,6 +2844,12 @@ function ImportBalancing() {
         KillerBalance.push(NewKillerBalance);
     }
 
+    // The creator finds a killer's balance by its index in Killers, so keep KillerBalance in the same order.
+    // Otherwise a balancing with killers in a different order would have edits applied to the wrong killer.
+    const killerOrder = Killers.map(killer => killer.Name);
+    const orderOf = name => killerOrder.includes(name) ? killerOrder.indexOf(name) : killerOrder.length;
+    KillerBalance.sort((a, b) => orderOf(a.Name) - orderOf(b.Name));
+
     UpdateDropdowns();
     LoadTier(0);
     LoadKillerOverrideUI(0);
