@@ -1942,7 +1942,7 @@ function CreateKillerOverride(name) {
         Name: name,
         KillerNotes: "", // Notes about the killer, e.g. specific rules/exceptions that can't be covered by the balancing system.
         IsDisabled: false, // Whether or not the killer is disabled for the purposes of the balancing.
-        Map: [0], // Can be empty, which means all maps are allowed.
+        Map: [], // Can be empty, which means all maps are allowed.
         BalanceTiers: [0], //Set to 0 for General Tier, which is always created.
         SurvivorBalanceTiers: [0], // Set to 0 for General Tier, which is always created.
         AntiFacecampPermitted: false, // Whether or not the anti-facecamping feature is permitted.
@@ -2653,14 +2653,10 @@ function ValidateKillerBalance(id) {
         return [false, `Killer data for ${Killers[id]} is undefined!`];
     }
 
-    // Check if the killer has a map assigned
+    // Check if the killer has a map list (an empty list means any map is allowed)
     if (killerData.Map == undefined) { 
         console.error(`Map for ${killerData.Name} is undefined!`);
         return [false, `Map for ${killerData.Name} is undefined!`];
-    }
-    if (killerData.Map.length <= 0) {
-        console.error(`Map for ${killerData.Name} is empty!`);
-        return [false, `Map for ${killerData.Name} is empty! Please assign a map!`];
     }
 
     return [true, "OK"];
