@@ -1,311 +1,395 @@
-html 
-    head 
-        title Balanced by Daylight: Balance Creator
-        link(rel="stylesheet", href="/stylesheets/balance-creator.css", type="text/css")
-        link(rel="icon", href="iconography/favicon.ico" type="image/x-icon")
-        script(src="/scripts/balance-creator.js", type="text/javascript" defer="defer")
-    body(onload="main()")
-        h1 Balanced by Daylight: Balance Creator
+extends layout.pug
 
-        div#column-flow-container
-            div#left-column(class="column-child")
-                h3 Base Game Balancing
-                label(for="maximum-perk-repetition-dropdown") Maximum Perk Repetition: 
-                select#maximum-perk-repetition-dropdown(style="min-width: 200px;")
-                    option(value="1") 1
-                    option(value="2") 2
-                    option(value="3") 3
-                    option(value="4") 4
+block head
+    link(rel="stylesheet" href=`/stylesheets/balance-creator.css?v=${assetVersion}`)
+    script(src=`/scripts/balance-creator.js?v=${assetVersion}` defer="defer")
 
-                br
-                br
-                label(for="global-notes-textarea") Global Notes:
-                br
-                textarea#global-notes-textarea(rows="10" cols="50" placeholder="If there are any special global rules, please enter them here.")
+block header
+    div.ctx
+        button#creator-import-button.pick.io(type="button")
+            img(src="/iconography/ui/import.svg" alt="")
+            span.txt
+                span.l Balancing
+                span.v Import
+        button#creator-export-button.pick.io(type="button")
+            img(src="/iconography/ui/export.svg" alt="")
+            span.txt
+                span.l Balancing
+                span.v Export
+    button#creator-clear-button.tool.framed(type="button" title="Clear balancing" aria-label="Clear balancing")
+        img(src="/iconography/ui/clear.svg" alt="")
 
-                h3 Tier Balancing
-                
-                div#tiered-balance-div
-                    label(for="tier-creation-textbox") Tier Name: 
-                    input#tier-creation-textbox(type="text")
-                    button#tier-creation-button Add New Tier
+block content
+    div#creator-root
+        .subbar.gutter
+            .col
+                .tabrow
+                    nav#ctabs.tabs(role="tablist")
+                        button(role="tab" data-ctab="general" aria-selected="true") General
+                        button(role="tab" data-ctab="tiers" aria-selected="false") Tiers
+                        button(role="tab" data-ctab="killers" aria-selected="false") Killers
+        .gutter
+            main#cmain.col.cmain.full
+                section.cview
+                    .cpanel.gen-grid(data-cpanel="general")
+                        section.bansec.plain
+                            .field
+                                label(for="balance-name-textbox") Balancing name
+                                input#balance-name-textbox(type="text")
+                            .field
+                                label(for="maximum-perk-repetition-dropdown") Same perk per team, max
+                                select#maximum-perk-repetition-dropdown
+                                    option(value="1") 1
+                                    option(value="2") 2
+                                    option(value="3") 3
+                                    option(value="4") 4
+                            .field
+                                label(for="global-notes-textarea") Tournament notes
+                                textarea#global-notes-textarea(rows="10" cols="50" placeholder="If there are any special global rules, please enter them here.")
+                        aside.side.gen-tips
+                            section.matchcard
+                                h2 Good to know
+                                ul.tips
+                                    li The General tier applies to every killer. Other tiers apply only to the killers they're added to in Killers › Tiers.
+                                    li Leave a killer without maps to allow any map, or pick the allowed ones in Killers › Maps.
+                                    li Items, item add-ons and offerings are allowed lists: only what you save is allowed. Killer add-ons and perks are ban lists.
+                                    li Perks released after your last export are banned in Check until you export the balancing again.
+                                    li A disabled killer keeps its settings, but they don't apply.
+                    .cpanel(data-cpanel="tiers" hidden)
+                        section.bansec
+                            h3
+                                | Tiers list
+                                small Every killer starts with General applied. Which tiers count for a killer is set in Killers › Tiers.
+                            .tierlist
+                                select#tier-selection-dropdown(size="6")
+                                .btns.stack
+                                    button.btn.primary(type="button" data-cact="new-tier") Add new tier
+                                    button#tier-removal-button.btn.danger(type="button") Remove selected tier
+                            span.vh(aria-hidden="true")
+                                input#tier-creation-textbox(type="text")
+                                button#tier-creation-button.btn.primary(type="button") Add New Tier
+                        section.bansec.edit-h
+                            h3
+                                | Edit perks for tier
+                                span(data-tiername) General
+                        nav.subtabs(data-subgroup="tier-role")
+                            button(data-sub="klr" data-role-hint="killer" aria-selected="false")
+                                img.ricon(src="/iconography/Killer.webp" alt="")
+                                | Killer perks
+                            button(data-sub="surv" data-role-hint="survivor" aria-selected="true")
+                                img.ricon(src="/iconography/Survivor.webp" alt="")
+                                | Survivor perks
+                        div(data-subpanel="tier-role:surv")
+                            .pair
+                                section.list
+                                    h4 Banned perks
+                                    select#survivor-individual-perk-ban-dropdown.selection-dropdown(size="10" multiple="multiple")
+                                    p.muted.hint Ctrl/Cmd-click to select multiple.
+                                    .btns
+                                        button#survivor-individual-perk-ban-add-button.btn.primary(type="button") Add selected
+                                        button#survivor-individual-perk-ban-remove-button.btn.danger(type="button") Remove
+                                section.list
+                                    h4 Banned combinations
+                                    select#survivor-combined-perk-ban-dropdown.selection-dropdown(size="10" multiple="multiple")
+                                    p.muted.hint Ctrl/Cmd-click to select multiple.
+                                    .btns
+                                        button#survivor-combined-perk-ban-add-button.btn.primary(type="button") Add selected as combo
+                                        button#survivor-combined-perk-ban-remove-button.btn.danger(type="button") Remove
+                        div(data-subpanel="tier-role:klr" hidden)
+                            .pair
+                                section.list
+                                    h4 Banned perks
+                                    select#killer-individual-perk-ban-dropdown.selection-dropdown(size="10" multiple="multiple")
+                                    p.muted.hint Ctrl/Cmd-click to select multiple.
+                                    .btns
+                                        button#killer-individual-perk-ban-add-button.btn.primary(type="button") Add selected
+                                        button#killer-individual-perk-ban-remove-button.btn.danger(type="button") Remove
+                                section.list
+                                    h4 Banned combinations
+                                    select#killer-combined-perk-ban-dropdown.selection-dropdown(size="10" multiple="multiple")
+                                    p.muted.hint Ctrl/Cmd-click to select multiple.
+                                    .btns
+                                        button#killer-combined-perk-ban-add-button.btn.primary(type="button") Add selected as combo
+                                        button#killer-combined-perk-ban-remove-button.btn.danger(type="button") Remove
+                    .cpanel(data-cpanel="killers" hidden)
+                        .killerbar
+                            .kpick
+                                img#ckiller-portrait(alt="")
+                                span.txt
+                                    span.l Killer
+                                    span#ckiller-name.v
+                                span.caret ▼
+                                select#killer-selection-dropdown
+                            label.check
+                                input#killer-disabled-checkbox(type="checkbox")
+                                | Disable this killer in this tournament
+                        #klock-note.klock-note(hidden)
+                            img.ricon(src="/iconography/Killer.webp" alt="")
+                            span
+                                b(data-kname)
+                                |  is disabled in this tournament. Its settings are kept, but they don't apply while it is disabled.
+                            button.btn.primary(type="button" data-cact="enable-killer") Enable killer
+                        #klock.klock
+                            nav.subtabs(data-subgroup="killer")
+                                button(data-sub="rules" aria-selected="true") General
+                                button(data-sub="maps" aria-selected="false") Maps
+                                button(data-sub="ktiers" aria-selected="false") Tiers
+                                button(data-sub="perks" aria-selected="false") Perks
+                                button(data-sub="kaddons" aria-selected="false") Killer add-ons
+                                button(data-sub="items" aria-selected="false") Items
+                                button(data-sub="offerings" aria-selected="false") Offerings
+                            div(data-subpanel="killer:rules")
+                                .twocol
+                                    section.bansec
+                                        h3 Rules
+                                        label.check
+                                            input#killer-antifacecamp-checkbox(type="checkbox")
+                                            | Anti-facecamp unhook allowed
+                                    section.bansec
+                                        h3 Notes for this killer
+                                        textarea#killer-override-notes-textarea(rows="10" cols="50" placeholder="If the killer has any special rules, please enter them here.")
+                            div(data-subpanel="killer:ktiers" hidden)
+                                section.bansec
+                                    h3
+                                        | Applied tiers
+                                        small Bans from the selected tiers apply to this killer. Keep General unless you mean to skip it.
+                                    p#killer-tier-alerts.tieralert(style="display:none;color:#ff0000" hidden="true") General tier is not selected for the Killer! If this is intentional, ignore this alert.
+                                    p#survivor-tier-alerts.tieralert(style="display:none;color:#ff0000" hidden="true") General tier is not selected for the Survivor! If this is intentional, ignore this alert.
+                                    .pair
+                                        section.list
+                                            h4 To killer perks
+                                            select#killer-tier-selection-dropdown(size="5" multiple="multiple")
+                                            p.muted.hint Ctrl/Cmd-click to select multiple.
+                                            .btns
+                                                button#killer-tier-confirmation-button.btn.primary(type="button") Save selected
+                                        section.list
+                                            h4 To survivor perks
+                                            select#survivor-balance-tier-dropdown(size="5" multiple="multiple")
+                                            p.muted.hint Ctrl/Cmd-click to select multiple.
+                                            .btns
+                                                button#survivor-tier-confirmation-button.btn.primary(type="button") Save selected
+                            div(data-subpanel="killer:maps" hidden)
+                                section.bansec
+                                    h3
+                                        | Maps
+                                        small Leave the list empty to allow any map
+                                    .pair
+                                        section.list
+                                            h4 Available maps
+                                            input#cmap-q(type="text" placeholder="Search maps or realms" autocomplete="off")
+                                            select#cmap-avail(multiple size="12")
+                                            p.muted.hint Ctrl/Cmd-click to select multiple.
+                                            .btns
+                                                button.btn.primary(type="button" data-cact="map-add") Add selected
+                                        section.list
+                                            h4 Maps for this killer
+                                            select#cmap-saved(multiple size="14")
+                                            p.muted.hint Ctrl/Cmd-click to select multiple.
+                                            .btns
+                                                button.btn.danger(type="button" data-cact="map-remove") Remove
+                                    span.vh(aria-hidden="true")
+                                        input#map-search-textbox(type="text" placeholder='Search for a map... (use "," to search for multiple maps)')
+                                        select#map-selection-dropdown(size="10" multiple="multiple")
+                                        button#map-confirmation-button.btn.primary(type="button") Confirm Map(s)
+                            div(data-subpanel="killer:perks" hidden)
+                                nav.subtabs.small(data-subgroup="kperk-role")
+                                    button(data-sub="klr" data-role-hint="killer" aria-selected="false")
+                                        img.ricon(src="/iconography/Killer.webp" alt="")
+                                        | Killer perks
+                                    button(data-sub="surv" data-role-hint="survivor" aria-selected="true")
+                                        img.ricon(src="/iconography/Survivor.webp" alt="")
+                                        | Survivor perks
+                                div(data-subpanel="kperk-role:surv")
+                                    section.bansec.neg-h
+                                        h3 Banned only vs this killer
+                                        .pair
+                                            section.list
+                                                h4 Perks
+                                                select#survivor-tiered-individual-perk-ban-dropdown.selection-dropdown(size="10" multiple="multiple")
+                                                p.muted.hint Ctrl/Cmd-click to select multiple.
+                                                .btns
+                                                    button#survivor-tiered-individual-perk-ban-add-button.btn.primary(type="button") Add selected
+                                                    button#survivor-tiered-individual-perk-ban-remove-button.btn.danger(type="button") Remove
+                                            section.list
+                                                h4 Combinations
+                                                select#survivor-tiered-combined-perk-ban-dropdown.selection-dropdown(size="10")
+                                                .btns
+                                                    button#survivor-tiered-combined-perk-ban-add-button.btn.primary(type="button") Add selected as combo
+                                                    button#survivor-tiered-combined-perk-ban-remove-button.btn.danger(type="button") Remove
+                                    section.bansec.ok
+                                        h3
+                                            | Exceptions
+                                            small Allowed vs this killer even if a tier bans them
+                                        .pair
+                                            section.list
+                                                h4 Perks
+                                                select#survivor-tiered-individual-perk-whitelist-dropdown.selection-dropdown(size="10" multiple="multiple")
+                                                p.muted.hint Ctrl/Cmd-click to select multiple.
+                                                .btns
+                                                    button#survivor-tiered-individual-perk-whitelist-add-button.btn.primary(type="button") Add selected
+                                                    button#survivor-tiered-individual-perk-whitelist-remove-button.btn.danger(type="button") Remove
+                                            section.list
+                                                h4 Combinations
+                                                select#survivor-tiered-combined-perk-whitelist-dropdown.selection-dropdown(size="10")
+                                                .btns
+                                                    button#survivor-tiered-combined-perk-whitelist-add-button.btn.primary(type="button") Add selected as combo
+                                                    button#survivor-tiered-combined-perk-whitelist-remove-button.btn.danger(type="button") Remove
+                                div(data-subpanel="kperk-role:klr" hidden)
+                                    section.bansec.neg-h
+                                        h3 Banned only for this killer
+                                        .pair
+                                            section.list
+                                                h4 Perks
+                                                select#killer-tiered-individual-perk-ban-dropdown.selection-dropdown(size="10" multiple="multiple")
+                                                p.muted.hint Ctrl/Cmd-click to select multiple.
+                                                .btns
+                                                    button#killer-tiered-individual-perk-ban-add-button.btn.primary(type="button") Add selected
+                                                    button#killer-tiered-individual-perk-ban-remove-button.btn.danger(type="button") Remove
+                                            section.list
+                                                h4 Combinations
+                                                select#killer-tiered-combined-perk-ban-dropdown.selection-dropdown(size="10")
+                                                .btns
+                                                    button#killer-tiered-combined-perk-ban-add-button.btn.primary(type="button") Add selected as combo
+                                                    button#killer-tiered-combined-perk-ban-remove-button.btn.danger(type="button") Remove
+                                    section.bansec.ok
+                                        h3
+                                            | Exceptions
+                                            small Allowed for this killer even if a tier bans them
+                                        .pair
+                                            section.list
+                                                h4 Perks
+                                                select#killer-tiered-individual-perk-whitelist-dropdown.selection-dropdown(size="10" multiple="multiple")
+                                                p.muted.hint Ctrl/Cmd-click to select multiple.
+                                                .btns
+                                                    button#killer-tiered-individual-perk-whitelist-add-button.btn.primary(type="button") Add selected
+                                                    button#killer-tiered-individual-perk-whitelist-remove-button.btn.danger(type="button") Remove
+                                            section.list
+                                                h4 Combinations
+                                                select#killer-tiered-combined-perk-whitelist-dropdown.selection-dropdown(size="10")
+                                                .btns
+                                                    button#killer-tiered-combined-perk-whitelist-add-button.btn.primary(type="button") Add selected as combo
+                                                    button#killer-tiered-combined-perk-whitelist-remove-button.btn.danger(type="button") Remove
+                            div(data-subpanel="killer:kaddons" hidden)
+                                section.bansec.neg-h
+                                    h3 Banned rarities
+                                    .rarities
+                                        label.check
+                                            input#killer-addon-ban-checkbox-common(type="checkbox")
+                                            | Common
+                                        label.check
+                                            input#killer-addon-ban-checkbox-uncommon(type="checkbox")
+                                            | Uncommon
+                                        label.check
+                                            input#killer-addon-ban-checkbox-rare(type="checkbox")
+                                            | Rare
+                                        label.check
+                                            input#killer-addon-ban-checkbox-veryrare(type="checkbox")
+                                            | Very rare
+                                        label.check
+                                            input#killer-addon-ban-checkbox-iridescent(type="checkbox")
+                                            | Iridescent
+                                section.bansec.neg-h
+                                    h3 Individual add-ons
+                                    .pair
+                                        section.list
+                                            h4 Available
+                                            select#killer-individual-addon-ban-dropdown(size="5" multiple="multiple")
+                                            p.muted.hint Ctrl/Cmd-click to select multiple.
+                                            .btns
+                                                button#killer-individual-addon-ban-confirmation-button.btn.primary(type="button") Ban selected
+                                        section.list
+                                            h4 Banned
+                                            select#killer-individual-addon-confirmed-bans-dropdown(size="5" multiple="multiple")
+                                            p.muted.hint Ctrl/Cmd-click to select multiple.
+                                            .btns
+                                                button#killer-individual-addon-ban-remove-bans-button.btn.danger(type="button") Remove
+                            div(data-subpanel="killer:items" hidden)
+                                section.bansec.ok
+                                    h3
+                                        | Allowed items &amp; add-ons
+                                        small Pick an item type, then select what survivors may bring
+                                    .triple
+                                        section.list
+                                            h4 Item type
+                                            select#killer-item-type-selection-dropdown(size="10")
+                                        section.list
+                                            h4 Allowed items
+                                            select#killer-item-selection-dropdown(size="10" multiple="multiple")
+                                            p.muted.hint Ctrl/Cmd-click to select multiple.
+                                            .btns
+                                                button#killer-item-confirmation-button.btn.primary(type="button") Save selected
+                                        section.list
+                                            h4 Allowed add-ons
+                                            select#killer-item-addon-selection-dropdown(size="10" multiple="multiple")
+                                            p.muted.hint Ctrl/Cmd-click to select multiple.
+                                            .btns
+                                                button#killer-item-addon-confirmation-button.btn.primary(type="button") Save selected
+                            div(data-subpanel="killer:offerings" hidden)
+                                section.bansec.ok
+                                    h3 Allowed offerings
+                                    .pair
+                                        section.list
+                                            h4 Killer
+                                            select#killer-offering-selection-dropdown(size="10" multiple="multiple")
+                                            p.muted.hint Ctrl/Cmd-click to select multiple.
+                                            .btns
+                                                button#killer-offering-confirmation-button.btn.primary(type="button") Save selected
+                                        section.list
+                                            h4 Survivors
+                                            select#survivor-offering-selection-dropdown(size="10" multiple="multiple")
+                                            p.muted.hint Ctrl/Cmd-click to select multiple.
+                                            .btns
+                                                button#survivor-offering-confirmation-button.btn.primary(type="button") Save selected
+                    //- Import / Export live here and are moved into a dialog when opened from the top bar
+                    #cio-holder(hidden)
+                        #cio-import
+                            p#cimp-msg.msg.bad(hidden)
+                            .twocol.io
+                                section.bansec
+                                    h3 From file
+                                    label#cimp-zone.dropzone
+                                        input#cimp-file(type="file" accept=".json,application/json" hidden)
+                                        span
+                                            | Click here
+                                            br
+                                            | or
+                                            br
+                                            | Drag &amp; Drop a .json file
+                                    span.vh(aria-hidden="true")
+                                        input#import-balancing-file(type="file" accept=".json")
+                                section.bansec
+                                    h3 From text
+                                    .field
+                                        label(for="balance-import-textbox") Paste JSON
+                                        textarea#balance-import-textbox(rows="5" cols="50")
+                                    .btns
+                                        button#balance-import-button.btn.primary(type="button") Import balancing
+                        #cio-export
+                            p.muted The file is named after the balancing name in General.
+                            .btns
+                                button#balance-export-button.btn.primary(type="button") Download file
+                                button.btn(type="button" data-cact="copy-export") Copy text
+                            p#cexp-msg.msg.bad(hidden)
+                            textarea#balance-export-textbox(rows="18" cols="80" readonly="readonly")
+                            span.vh(aria-hidden="true")
+                                button#balance-textbox-export.btn.primary(type="button") Show as text
+                aside#perk-panel.side.cside(hidden)
+                    section.matchcard
+                        h2 Perk search
+                        .roleseg
+                            button(type="button" data-searchrole="killer")
+                                img.ricon(src="/iconography/Killer.webp" alt="")
+                                | Killer
+                            button(type="button" data-searchrole="survivor")
+                                img.ricon(src="/iconography/Survivor.webp" alt="")
+                                | Survivor
+                        span.vh
+                            input#perk-search-role-checkbox(type="checkbox")
+                        .searchrow
+                            input#perk-search-textbox(type="text")
+                            button#perk-search-button.btn.primary(type="button") Search
+                        select#perk-search-results(size="30" multiple="multiple")
+                        p.muted.hint Ctrl/Cmd-click to select multiple, then use an Add button on the left.
 
-                    br
-                    br
-
-                    label(for="tier-selection-dropdown") Tier:
-                    select#tier-selection-dropdown(style="min-width: 200px;")
-                    button#tier-removal-button Remove Selected Tier
-
-                    br
-                    hr
-
-                    div#tier-selection-container
-                        
-                        div.perk-ban-dropdown
-                            //  Create a dropdown for Survivor Individual Perk Bans
-                            p Survivor Individual Perk Bans:
-                            select#survivor-individual-perk-ban-dropdown(class="selection-dropdown", size="10" multiple="multiple")
-                            br
-                            button#survivor-individual-perk-ban-add-button Add Perk(s)
-                            button#survivor-individual-perk-ban-remove-button Remove Perk(s)
-
-                        div.perk-ban-dropdown
-                            // Create a dropdown for Survivor Combined Perk Bans
-                            p Survivor Combined Perk Bans:
-                            select#survivor-combined-perk-ban-dropdown(class="selection-dropdown" size="10" multiple="multiple")
-                            br
-                            button#survivor-combined-perk-ban-add-button Add Perk(s)
-                            button#survivor-combined-perk-ban-remove-button Remove Perk(s)
-
-                        div.perk-ban-dropdown
-                            // Create a dropdown for Killer Individual Perk Bans
-                            p Killer Individual Perk Bans:
-                            select#killer-individual-perk-ban-dropdown(class="selection-dropdown", size="10" multiple="multiple")
-                            br
-                            button#killer-individual-perk-ban-add-button Add Perk(s)
-                            button#killer-individual-perk-ban-remove-button Remove Perk(s)
-
-                        div.perk-ban-dropdown
-                            // Create a dropdown for Killer Combined Perk Bans
-                            p Killer Combined Perk Bans:
-                            select#killer-combined-perk-ban-dropdown(class="selection-dropdown", size="10" multiple="multiple")
-                            br
-                            button#killer-combined-perk-ban-add-button Add Perk(s)
-                            button#killer-combined-perk-ban-remove-button Remove Perk(s)
-                hr
-                hr
-                h3 Killer Balancing
-                hr
-                hr
-                div#killer-balance-div
-                    label(for="killer-selection-dropdown") Killer:
-                    select#killer-selection-dropdown(style="min-width: 200px;")
-                    br
-                    label(for="killer-antifacecamp-checkbox") Anti-Facecamp Unhook Permitted?:
-                    input#killer-antifacecamp-checkbox(type="checkbox")
-                    br
-                    label(for="killer-disabled-checkbox") Killer Disabled?:
-                    input#killer-disabled-checkbox(type="checkbox")
-                    br
-                    br
-                    label(for="map-selection-dropdown") Map:
-                    br
-                    input(type="text" id="map-search-textbox" placeholder="Search for a map... (use \",\" to search for multiple maps)")
-                    br
-                    select#map-selection-dropdown(style="min-width: 300px;", size="10" multiple="multiple")
-                    br
-                    button#map-confirmation-button(style="min-width: 252px;") Confirm Map(s)
-                    br
-                    hr
-                    br
-                    div#killer-addon-container
-                        div#killer-addon-ban-container
-                            label(for="killer-addon-ban-checkbox-common") Common Addons
-                            input#killer-addon-ban-checkbox-common(type="checkbox")
-                            br
-                            label(for="killer-addon-ban-checkbox-uncommon") Uncommon Addons
-                            input#killer-addon-ban-checkbox-uncommon(type="checkbox")
-                            br
-                            label(for="killer-addon-ban-checkbox-rare") Rare Addons
-                            input#killer-addon-ban-checkbox-rare(type="checkbox")
-                            br
-                            label(for="killer-addon-ban-checkbox-veryrare") Very Rare Addons
-                            input#killer-addon-ban-checkbox-veryrare(type="checkbox")
-                            br
-                            label(for="killer-addon-ban-checkbox-iridescent") Iridescent Addons
-                            input#killer-addon-ban-checkbox-iridescent(type="checkbox")
-                            br
-                        div#killer-individual-addon-ban-container
-                            label(for="killer-individual-addon-ban-dropdown") Individual Addons: 
-                            br
-                            select#killer-individual-addon-ban-dropdown(style="min-width: 200px;" size="5" multiple="multiple")
-                            br
-                            button#killer-individual-addon-ban-confirmation-button(style="min-width: 200px;") Confirm Addon(s)
-                        div#killer-individual-addon-ban-confirmed-container
-                            label(for="killer-individual-addon-confirmed-bans-dropdown") Confirmed Addon Bans: 
-                            br
-                            select#killer-individual-addon-confirmed-bans-dropdown(style="min-width: 200px;" size="5" multiple="multiple")
-                            br
-                            button#killer-individual-addon-ban-remove-bans-button(style="min-width: 200px;") Remove Addon(s)
-                    br
-                    hr
-                    br
-                    div#killer-items-container
-                        div#killer-item-type-selection-container
-                            label(for="killer-item-type-selection-dropdown") Item Types:
-                            br
-                            select#killer-item-type-selection-dropdown(style="min-width: 200px;" size="10")
-                        div#killer-item-selection-container
-                            label(for="killer-item-selection-dropdown") Item Whitelist:
-                            br
-                            select#killer-item-selection-dropdown(style="min-width: 200px;" size="10" multiple="multiple")
-                            br
-                            button#killer-item-confirmation-button(style="min-width: 200px;") Confirm Item(s)
-                        div#killer-item-addon-selection-container
-                            label(for="killer-item-addon-selection-dropdown") Item Addon Whitelist:
-                            br
-                            select#killer-item-addon-selection-dropdown(style="min-width: 200px;" size="10" multiple="multiple")
-                            br
-                            button#killer-item-addon-confirmation-button(style="min-width: 200px;") Confirm Addon(s)
-                    br
-                    hr
-                    br
-                    h4#killer-tier-alerts(style="display:none;color:#ff0000" hidden="true") General tier is not selected for the Killer! If this is intentional, ignore this alert.
-                    br
-                    h4#survivor-tier-alerts(style="display:none;color:#ff0000" hidden="true") General tier is not selected for the Survivor! If this is intentional, ignore this alert.
-                    div#killer-override-tier-selection-container
-                        div#killer-individual-killer-tier-selection-container
-                            label(for="killer-tier-selection-dropdown") Killer Perk Tiers: 
-                            br
-                            select#killer-tier-selection-dropdown(style="min-width: 200px;" size="5" multiple="multiple")
-                            br
-                            button#killer-tier-confirmation-button(style="min-width: 200px;") Confirm Tier(s)
-                        #killer-individual-survivor-tier-selection-container 
-                            label(for="survivor-balance-tier-dropdown") Survivor Perk Tiers: 
-                            br
-                            select#survivor-balance-tier-dropdown(style="min-width: 200px;" size="5" multiple="multiple")
-                            br
-                            button#survivor-tier-confirmation-button(style="min-width: 200px;") Confirm Tier(s)
-                    br
-                    hr
-                    br
-                    div#killer-override-offering-selection-container
-                        div#killer-individual-offering-selection-container
-                            label(for="killer-offering-selection-dropdown") Permitted Killer Offerings: 
-                            br
-                            select#killer-offering-selection-dropdown(style="min-width: 200px;" size="10" multiple="multiple")
-                            br
-                            button#killer-offering-confirmation-button(style="min-width: 200px;") Confirm Offering(s)
-                        div#survivor-individual-offering-selection-container
-                            label(for="killer-offering-selection-dropdown") Permitted Survivor Offerings: 
-                            br
-                            select#survivor-offering-selection-dropdown(style="min-width: 200px;" size="10" multiple="multiple")
-                            br
-                            button#survivor-offering-confirmation-button(style="min-width: 200px;") Confirm Offering(s)
-
-                    br
-                    hr
-                    label(for="killer-override-notes-textarea") Killer-Specific Notes:
-                    br
-                    textarea#killer-override-notes-textarea(rows="10" cols="50" placeholder="If the killer has any special rules, please enter them here.")
-                    br
-                    hr
-                    div#killer-selection-container
-                        div.perk-ban-dropdown
-                            //  Create a dropdown for Survivor Individual Perk Bans
-                            p Survivor Individual Perk Bans:
-                            select#survivor-tiered-individual-perk-ban-dropdown(class="selection-dropdown", size="10" multiple="multiple")
-                            br
-                            button#survivor-tiered-individual-perk-ban-add-button Add Perk(s)
-                            button#survivor-tiered-individual-perk-ban-remove-button Remove Perk(s)
-
-                        div.perk-ban-dropdown
-                            // Create a dropdown for Survivor Combined Perk Bans
-                            p Survivor Combined Perk Bans:
-                            select#survivor-tiered-combined-perk-ban-dropdown(class="selection-dropdown", size="10")
-                            br
-                            button#survivor-tiered-combined-perk-ban-add-button Add Perk(s)
-                            button#survivor-tiered-combined-perk-ban-remove-button Remove Perk(s)
-
-                        div.perk-ban-dropdown
-                            // Create a dropdown for Killer Individual Perk Bans
-                            p Killer Individual Perk Bans:
-                            select#killer-tiered-individual-perk-ban-dropdown(class="selection-dropdown", size="10" multiple="multiple")
-                            br
-                            button#killer-tiered-individual-perk-ban-add-button Add Perk(s)
-                            button#killer-tiered-individual-perk-ban-remove-button Remove Perk(s)
-
-                        div.perk-ban-dropdown
-                            // Create a dropdown for Killer Combined Perk Bans
-                            p Killer Combined Perk Bans:
-                            select#killer-tiered-combined-perk-ban-dropdown(class="selection-dropdown", size="10")
-                            br
-                            button#killer-tiered-combined-perk-ban-add-button Add Perk(s)
-                            button#killer-tiered-combined-perk-ban-remove-button Remove Perk(s)
-
-                        div.perk-ban-dropdown
-                            //  Create a dropdown for Survivor Individual Perk Whitelists
-                            p Survivor Individual Perk Whitelists:
-                            select#survivor-tiered-individual-perk-whitelist-dropdown(class="selection-dropdown", size="10" multiple="multiple")
-                            br
-                            button#survivor-tiered-individual-perk-whitelist-add-button Add Perk(s)
-                            button#survivor-tiered-individual-perk-whitelist-remove-button Remove Perk(s)
-
-                        div.perk-ban-dropdown
-                            // Create a dropdown for Survivor Combined Perk Whitelists
-                            p Survivor Combined Perk Whitelists:
-                            select#survivor-tiered-combined-perk-whitelist-dropdown(class="selection-dropdown", size="10")
-                            br
-                            button#survivor-tiered-combined-perk-whitelist-add-button Add Perk(s)
-                            button#survivor-tiered-combined-perk-whitelist-remove-button Remove Perk(s)
-
-                        div.perk-ban-dropdown
-                            //  Create a dropdown for Killer Individual Perk Whitelists
-                            p Killer Individual Perk Whitelists:
-                            select#killer-tiered-individual-perk-whitelist-dropdown(class="selection-dropdown", size="10" multiple="multiple")
-                            br
-                            button#killer-tiered-individual-perk-whitelist-add-button Add Perk(s)
-                            button#killer-tiered-individual-perk-whitelist-remove-button Remove Perk(s)
-
-                        div.perk-ban-dropdown
-                            // Create a dropdown for Killer Combined Perk Whitelists
-                            p Killer Combined Perk Whitelists:
-                            select#killer-tiered-combined-perk-whitelist-dropdown(class="selection-dropdown", size="10")
-                            br
-                            button#killer-tiered-combined-perk-whitelist-add-button Add Perk(s)
-                            button#killer-tiered-combined-perk-whitelist-remove-button Remove Perk(s)
-
-                    - var i = 0;
-                    while i < 10
-                        br
-                        - i++;
-            div#mid-column(class="column-child")
-                    div.perk-search-module
-                        label(for="perk-search-role-checkbox") Is Survivor Perk?:
-                        input#perk-search-role-checkbox(type="checkbox")
-                        br
-                        label(for="perk-search-textbox-gen-perk-ban") Perk Name:
-                        input#perk-search-textbox(type="text")
-                        button#perk-search-button Search
-                    div#perk-search-results-container
-                        select#perk-search-results(size="30" style="min-width: 350px;" multiple="multiple")
-                        br
-
-                    hr
-                    //- h4#restricted-space-header Presets
-                    //- br
-                    //- label(class="small-label" for="preset-select-textbox") Current Preset Selected: {PRESET}
-                    //- br
-                    //- select#preset-select-textbox(style="min-width: 200px;")
-                    //- button#preset-load-button Load Preset
-                    //- button#preset-save-button Save Preset
-                    //- br
-                    //- button#preset-save-as-button Save Preset As...
-                    hr
-                    h4#restricted-space-header Importing
-                    label(class="small-label" for="balance-import-textbox") Import via textbox:
-                    br
-                    textarea#balance-import-textbox(rows="5" cols="50")
-                    br
-                    br
-                    label(class="small-label" for="balance-import-file") Import via file (Recommended):
-                    br
-                    input(type="file" id="import-balancing-file" accept=".json")
-                    br
-                    br
-                    button(id="balance-import-button") Import Balancing Sheet 
-                    hr
-                    h4#restricted-space-header Exporting
-                    label(for="balance-name-textbox") Balancing Title: 
-                    input#balance-name-textbox(type="text")
-                    br
-                    button(id="balance-export-button") Export Balancing Sheet to File
-                    button(id="balance-textbox-export") Export Balancing Sheet to Textbox
-                    br
-                    // Create a readonly textbox for the exported balancing sheet with 10 rows and 50 columns
-                    textarea#balance-export-textbox(rows="30" cols="80" readonly="readonly" style="display:none;")
-                    - var i = 0;
-                    while i < 10
-                        br
-                        - i++;
+block scripts
+    script(src=`/scripts/creator-ui.js?v=${assetVersion}`)
