@@ -1,0 +1,43 @@
+doctype html
+html(lang="en")
+    head
+        meta(charset="utf-8")
+        meta(name="viewport" content="width=device-width, initial-scale=1.0")
+        title Balanced by Daylight
+        meta(name="title" content="Balanced by Daylight")
+        meta(name="description" content="A website to verify and create Dead by Daylight game loadouts to ensure compliance with most tournament organization's rules and competitive play.")
+        meta(name="keywords" content="dead by daylight,dbd,loadout,balancing,dbd comp,competitive dbd,comp dbd,comp,bbd")
+        meta(name="robots" content="index, follow")
+        link(rel="icon" href="/iconography/favicon.ico" type="image/x-icon")
+        link(rel="preconnect" href="https://fonts.googleapis.com")
+        link(rel="preconnect" href="https://fonts.gstatic.com" crossorigin)
+        link(rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&family=Roboto+Condensed:wght@400;600;700&display=swap")
+        link(rel="stylesheet" href=`/stylesheets/common.css?v=${assetVersion}`)
+        block head
+    body
+        header.sitebar.gutter
+            div.col
+                a.brand(href="/balance-checker")
+                    img(src="/iconography/Logo-Shadow.webp" alt="")
+                    span Balanced by Daylight
+                div.modewrap
+                    button#mode-button.pick.m(type="button" aria-haspopup="menu" aria-expanded="false")
+                        span.txt
+                            span.l Mode
+                            span.v= mode == "create" ? "Create" : "Check"
+                        span.caret ▼
+                    div#mode-menu.menu(role="menu" hidden)
+                        a(role="menuitemradio" href="/balance-checker" aria-checked=(mode == "create" ? "false" : "true"))
+                            b Check
+                            small Check loadouts against a tournament's rules
+                        a(role="menuitemradio" href="/balance-creator" aria-checked=(mode == "create" ? "true" : "false"))
+                            b Create
+                            small Build the balancing for your own tournament
+                block header
+                div.right
+                    button#info-button.tool.framed(type="button" title="About Balanced by Daylight" aria-label="About")
+                        img(src="/iconography/Info.webp" alt="")
+        block content
+        div#dialog-layer
+        script(src=`/scripts/ui-common.js?v=${assetVersion}`)
+        block scripts
